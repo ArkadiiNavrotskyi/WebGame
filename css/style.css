@@ -189,3 +189,6 @@ body.rot-skip #rotate { display: none !important; }
 #gameui .panel { max-height: calc(100dvh - 20px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 @media (max-height: 560px) { #gameui .panel h2 { font-size: 34px !important; } }
 body:has(.hubbar) #ui { padding-top: max(66px, calc(env(safe-area-inset-top) + 56px)); }
+/* прокрутка пальцем и кнопки «Готов», которые всегда на виду */
+#ui, .modal-back, #gameui .panel, .scroll-y { touch-action: pan-y; overscroll-behavior: contain; }
+.rolewrap .row { position: sticky; bottom: 0; z-index: 2; padding: 10px 0 6px; background: linear-gradient(180deg, rgba(22,20,58,0), rgba(28,24,66,.96) 35%); }

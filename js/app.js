@@ -27,6 +27,21 @@ const App = {
     this.bindHubInput();
     $('#rotate .skip').onclick = () => document.body.classList.add('rot-skip');
     this.showStart();
+    this.checkVersion();
+  },
+
+  // если на сайте уже новая версия, а телефон показал старую из кэша — перезагружаемся
+  async checkVersion() {
+    if (location.protocol === 'file:') return;
+    try {
+      const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+      const { v } = await r.json();
+      const p = new URLSearchParams(location.search);
+      if (v > (CONFIG.version || 0) && p.get('u') !== String(v) && this.screen === 'start') {
+        p.set('u', v);
+        location.replace(`${location.pathname}?${p}`);
+      }
+    } catch (e) {}
   },
 
   // ---------- Фоновое небо + хаб ----------
