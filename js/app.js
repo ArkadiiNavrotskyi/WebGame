@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function h(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
 window.GAMES = window.GAMES || {};
-const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards'];
+const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz'];
 
 const App = {
   net: new Net(),
@@ -15,7 +15,7 @@ const App = {
   screen: null,
   game: null, gameDef: null, loops: [],
   rs: null, // состояние выбора ролей
-  hub: { islands: [], hover: -1, remote: null, remoteTarget: null, parts: new Particles(), lastSend: 0, tapFx: [] },
+  hub: { islands: [], hover: -1, remote: null, remoteTarget: null, parts: new Particles(), lastSend: 0, tapFx: [], scroll: 0, maxScroll: 0, vel: 0, drag: null },
 
   init() {
     this.ui = $('#ui'); this.gui = $('#gameui');
@@ -63,32 +63,46 @@ const App = {
     requestAnimationFrame(step);
   },
 
+  // острова в два ряда (на телефоне вертикально — по два); если не влезает — хаб прокручивается
   hubLayout(w, hh) {
     const L = [];
+    let titleY, contentH;
     if (w > hh * 1.15) {
-      const r = Math.min(w / 12, hh / 6.5);
-      const ys = [0.6, 0.47, 0.55, 0.47, 0.6];
-      HUB_ORDER.forEach((id, i) => L.push({ id, x: w * (0.12 + i * 0.19), y: hh * ys[i], r: i === 2 ? r * 1.2 : r }));
+      const r = Math.max(Math.min(w / 10, hh / 9.5), Math.min(w / 14, 55));
+      titleY = Math.max(hh * 0.13, 64);
+      const y1 = titleY + r * 1.35 + 50, y2 = y1 + r * 3.75;
+      const xs = [0.14, 0.38, 0.62, 0.86];
+      HUB_ORDER.forEach((id, i) => L.push({ id, x: w * xs[i % 4], y: (i < 4 ? y1 : y2) + (i % 2 ? -0.2 : 0.2) * r, r }));
+      contentH = y2 + r * 2.4;
     } else {
-      const r = Math.min(w / 6.2, hh / 11.5);
-      const P = [[0.27, 0.28], [0.73, 0.28], [0.5, 0.54], [0.27, 0.8], [0.73, 0.8]];
-      HUB_ORDER.forEach((id, i) => L.push({ id, x: w * P[i][0], y: hh * P[i][1], r: i === 2 ? r * 1.15 : r }));
+      const r = Math.min(w / 5.4, hh / 11.5, 82);
+      titleY = Math.max(hh * 0.11, 84);
+      const y1 = titleY + r * 1.35 + 56;
+      HUB_ORDER.forEach((id, i) => L.push({ id, x: w * (i % 2 ? 0.73 : 0.27), y: y1 + Math.floor(i / 2) * r * 3.7 + (i % 2 ? r * 0.35 : 0), r }));
+      contentH = y1 + 3 * r * 3.7 + r * 0.35 + r * 2.4;
     }
-    return L;
+    return { L, titleY, contentH };
   },
 
   drawHub(g, w, hh, t, dt) {
     const H = this.hub;
-    H.islands = this.hubLayout(w, hh);
+    const lay = this.hubLayout(w, hh);
+    H.islands = lay.L;
+    H.maxScroll = Math.max(0, lay.contentH - hh);
+    // прокрутка по инерции
+    if (!H.drag) { H.scroll += H.vel * dt; H.vel *= Math.exp(-dt * 5); if (Math.abs(H.vel) < 5) H.vel = 0; }
+    H.scroll = clamp(H.scroll, 0, H.maxScroll);
     H.parts.update(dt);
+    g.save();
+    g.translate(0, -H.scroll);
     // заголовок
     g.save();
     g.textAlign = 'center';
-    g.font = `${Math.min(64, w / 9)}px 'Marck Script', cursive`;
+    g.font = `${Math.min(64, w / 9, hh / 6)}px 'Marck Script', cursive`;
     g.fillStyle = '#fff';
     g.globalAlpha = 0.95;
     const names = `${this.me.name || 'Я'}  ✦  ${this.peer ? this.peer.name : '…'}`;
-    const ty = w > hh * 1.15 ? hh * 0.17 : hh * 0.12;
+    const ty = lay.titleY;
     Glow.draw(g, w / 2, ty - 14, Math.min(260, w / 3), '#b28cff', 0.25);
     g.fillText(CONFIG.siteTitle, w / 2, ty);
     g.font = `600 ${Math.min(16, w / 26)}px Comfortaa, sans-serif`;
@@ -135,30 +149,67 @@ const App = {
       }
     }
     H.parts.draw(g);
+    g.restore();
+    // подсказка: ниже есть ещё игры
+    if (H.maxScroll > 10 && H.scroll < H.maxScroll - 30) {
+      const a = Math.min(1, (H.maxScroll - 30 - H.scroll) / 80);
+      const by = hh - 26 + Math.sin(t * 3) * 5;
+      g.save(); g.globalAlpha = a * 0.9; g.textAlign = 'center';
+      g.font = '700 13px Comfortaa, sans-serif'; g.fillStyle = '#ffe7a6';
+      g.fillText('листай вниз — ещё игры', w / 2, by - 18);
+      g.strokeStyle = '#ffe7a6'; g.lineWidth = 2.5; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(w / 2 - 9, by - 6); g.lineTo(w / 2, by + 3); g.lineTo(w / 2 + 9, by - 6); g.stroke();
+      g.restore();
+    }
   },
 
   bindHubInput() {
     const H = this.hub;
-    const hit = (x, y) => H.islands.findIndex((s) => Math.hypot((x - s.x) / s.r, (y - s.y - s.r * 0.35) / (s.r * 1.1)) < 1.15);
+    const hit = (x, y) => { y += H.scroll; return H.islands.findIndex((s) => Math.hypot((x - s.x) / s.r, (y - s.y - s.r * 0.35) / (s.r * 1.1)) < 1.15); };
     this.bg.addEventListener('pointermove', (e) => {
       if (this.screen !== 'hub') return;
+      const D = H.drag;
+      if (D && D.id === e.pointerId) {
+        const dy = e.clientY - D.y;
+        if (Math.abs(dy) > 8) D.moved = true;
+        if (D.moved) {
+          const now = performance.now();
+          H.scroll = clamp(D.s0 - dy, 0, H.maxScroll);
+          H.vel = (D.ly - e.clientY) / Math.max(0.016, (now - D.lt) / 1000); D.ly = e.clientY; D.lt = now;
+          return;
+        }
+      }
       H.hover = hit(e.clientX, e.clientY);
       this.bg.style.cursor = H.hover >= 0 ? 'pointer' : 'default';
       this.sendCursor(e.clientX, e.clientY);
     });
     this.bg.addEventListener('pointerdown', (e) => {
       if (this.screen !== 'hub') return;
-      H.tapFx.push({ x: e.clientX, y: e.clientY, t: 0 });
+      H.vel = 0;
+      H.drag = { id: e.pointerId, y: e.clientY, s0: H.scroll, moved: false, ly: e.clientY, lt: performance.now() };
+      try { this.bg.setPointerCapture(e.pointerId); } catch (er) {}
+    });
+    const up = (e) => {
+      const D = H.drag; if (!D || D.id !== e.pointerId) return;
+      H.drag = null;
+      if (this.screen !== 'hub') return;
+      if (D.moved) { if (performance.now() - D.lt > 80) H.vel = 0; return; }
+      H.vel = 0;
+      H.tapFx.push({ x: e.clientX, y: e.clientY + H.scroll, t: 0 });
       this.sendCursor(e.clientX, e.clientY, true);
       const i = hit(e.clientX, e.clientY);
       if (i >= 0) { H.hover = i; SFX.play('pop'); this.propose(H.islands[i].id); }
-    });
+    };
+    this.bg.addEventListener('pointerup', up);
+    this.bg.addEventListener('pointercancel', (e) => { if (H.drag && H.drag.id === e.pointerId) H.drag = null; });
+    this.bg.addEventListener('wheel', (e) => { if (this.screen !== 'hub') return; H.vel = 0; H.scroll = clamp(H.scroll + e.deltaY, 0, H.maxScroll); }, { passive: true });
   },
 
   sendCursor(x, y, force) {
     const H = this.hub, now = performance.now();
     if (!this.net.connected || (!force && now - H.lastSend < 50) || !H.islands.length) return;
     H.lastSend = now;
+    y += H.scroll;
     let best = 0, bd = 1e9;
     H.islands.forEach((s, i) => { const d = Math.hypot(x - s.x, y - s.y); if (d < bd) { bd = d; best = i; } });
     const s = H.islands[best];
@@ -239,7 +290,7 @@ const App = {
     const el = h(`
       <div class="panel">
         <h1 class="title">${esc(CONFIG.siteTitle)}</h1>
-        <p class="subtitle">пять игр для двоих · на разных концах карты</p>
+        <p class="subtitle">восемь игр для двоих · на разных концах карты</p>
         <label class="lbl">Как тебя зовут?</label>
         <input class="inp" id="name" maxlength="16" placeholder="Твоё имя" value="${esc(this.me.name)}" autocomplete="off">
         ${room ? `
@@ -564,6 +615,7 @@ const App = {
 const ISLAND_ROCK = [[-1, 0], [-0.88, 0.22], [-0.7, 0.42], [-0.55, 0.62], [-0.32, 0.78], [-0.18, 1.08], [-0.02, 1.38], [0.12, 1.05], [0.3, 0.86], [0.5, 0.66], [0.68, 0.46], [0.86, 0.24], [1, 0]];
 const ISLAND_TOP = {
   constellation: ['#a58bff', '#5a3fb0'], lighthouse: ['#f1d9a4', '#c49a5c'], keys: ['#6cc9b4', '#2f7f78'], garden: ['#86e39a', '#3b9a5e'], cards: ['#f3c76b', '#b0782c'],
+  bomb: ['#f2a07a', '#a3453a'], starfall: ['#9fb8ff', '#4a5cc0'], usquiz: ['#ffb3d1', '#c0507e'],
 };
 
 function drawIsland(g, x, y, r, t, id, hover, color) {
@@ -683,6 +735,62 @@ const MINI = {
     card(0.24, 0.2, 'sun', '#b5562f', '#5e2318', '#ffb35c');
     g.globalCompositeOperation = 'lighter';
     for (let i = 0; i < 3; i++) { const k = (t * 0.6 + i / 3) % 1; Glow.draw(g, Math.sin(i * 2.1) * r * 0.5, -r * 0.6 - k * r * 0.8, r * 0.06, '#ffe7a6', Math.sin(k * Math.PI)); }
+    g.globalCompositeOperation = 'source-over';
+  },
+  bomb(g, r, t) {
+    // круглая бомба с горящим фитилём
+    const cx = 0, cy = -r * 0.5, R = r * 0.42;
+    const gr = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
+    gr.addColorStop(0, '#6b6488'); gr.addColorStop(1, '#17141f');
+    g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R, 0, TAU); g.fill();
+    g.fillStyle = '#2b2636'; g.fillRect(cx - R * 0.25, cy - R * 1.12, R * 0.5, R * 0.25);
+    g.strokeStyle = '#c9a77a'; g.lineWidth = r * 0.04; g.lineCap = 'round';
+    const fx = cx + R * 0.55 + Math.sin(t * 2) * r * 0.03, fy = cy - R * 1.45;
+    g.beginPath(); g.moveTo(cx, cy - R * 1.1); g.quadraticCurveTo(cx + R * 0.1, cy - R * 1.5, fx, fy); g.stroke();
+    // табло таймера
+    g.fillStyle = '#0b0a10'; roundRect(g, cx - R * 0.55, cy - R * 0.1, R * 1.1, R * 0.45, R * 0.08); g.fill();
+    g.fillStyle = Math.floor(t * 2) % 2 ? '#ff5c5c' : '#ff8a6e'; g.font = `700 ${R * 0.36}px "Courier New", monospace`; g.textAlign = 'center';
+    g.fillText('0:0' + (9 - Math.floor(t) % 10), cx, cy + R * 0.25);
+    g.globalCompositeOperation = 'lighter';
+    Glow.draw(g, fx, fy, r * 0.32, '#ffb347', 0.8 + Math.sin(t * 20) * 0.2);
+    for (let i = 0; i < 3; i++) { const k = (t * 1.5 + i / 3) % 1; Glow.draw(g, fx + Math.sin(i * 2 + t * 3) * r * 0.15 * k, fy - k * r * 0.3, r * 0.06, '#ffe27a', 1 - k); }
+    Glow.draw(g, cx - R * 0.35, cy - R * 0.4, R * 0.5, '#ffffff', 0.15);
+    g.globalCompositeOperation = 'source-over';
+  },
+  starfall(g, r, t) {
+    // башенка из светящихся блоков и падающая фигура
+    const c = r * 0.2;
+    const cells = [[-2, 0, '#ff8fc3'], [-1, 0, '#ff8fc3'], [0, 0, '#6bd6ff'], [1, 0, '#6bd6ff'], [-1, -1, '#ffd36b'], [0, -1, '#8f9dff'], [1, -1, '#8f9dff'], [0, -2, '#8f9dff'], [-2, -1, '#ffd36b']];
+    const box = (x, y, col) => {
+      const gr = g.createLinearGradient(x, y, x + c, y + c); gr.addColorStop(0, mixColor(col, '#ffffff', 0.4)); gr.addColorStop(1, mixColor(col, '#1a1030', 0.3));
+      g.fillStyle = gr; roundRect(g, x + 1, y + 1, c - 2, c - 2, c * 0.2); g.fill();
+    };
+    cells.forEach(([x, y, col]) => box(x * c, y * c - c * 1.1, col));
+    const k = (t * 0.45) % 1, fy = -r * 1.5 + k * r * 0.55;
+    g.globalAlpha = Math.min(1, (1 - k) * 4);
+    [[0, 0], [1, 0], [1, -1], [2, -1]].forEach(([x, y]) => box((x - 1) * c + c * 0.5, fy + y * c, '#ffb3e0'));
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'lighter';
+    Glow.draw(g, 0, -r * 0.55, r * 0.7, '#8fb8ff', 0.3);
+    const sx = r * 0.6 - ((t * 0.7) % 1) * r * 1.2, sy = -r * 1.35 + ((t * 0.7) % 1) * r * 0.4;
+    Glow.draw(g, sx, sy, r * 0.12, '#fff3c4', 0.9);
+    g.globalCompositeOperation = 'source-over';
+  },
+  usquiz(g, r, t) {
+    // две звезды кружат вокруг сердца
+    const cy = -r * 0.6;
+    const s = r * 0.24 * (1 + Math.sin(t * 4) * 0.06);
+    g.globalCompositeOperation = 'lighter'; Glow.draw(g, 0, cy, r * 0.65, '#ff8fb8', 0.45); g.globalCompositeOperation = 'source-over';
+    const hg = g.createRadialGradient(-s * 0.4, cy - s * 0.4, 1, 0, cy, s * 1.4); hg.addColorStop(0, '#ffd6e8'); hg.addColorStop(1, '#e0457e');
+    g.fillStyle = hg; g.beginPath(); g.moveTo(0, cy + s * 0.95);
+    g.bezierCurveTo(-s * 1.4, cy + s * 0.1, -s * 1.05, cy - s * 1.05, 0, cy - s * 0.4);
+    g.bezierCurveTo(s * 1.05, cy - s * 1.05, s * 1.4, cy + s * 0.1, 0, cy + s * 0.95); g.fill();
+    const a = t * 1.3;
+    g.globalCompositeOperation = 'lighter';
+    for (const [d, col] of [[0, '#ffb36b'], [Math.PI, '#8fb8ff']]) {
+      const x = Math.cos(a + d) * r * 0.62, y = cy + Math.sin(a + d) * r * 0.22;
+      Glow.draw(g, x, y, r * 0.22, col, 0.9);
+    }
     g.globalCompositeOperation = 'source-over';
   },
 };

@@ -1,0 +1,307 @@
+'use strict';
+// «Ты и я» — оба отвечают на вопрос о себе и угадывают ответ другого. В конце — насколько вы совпали.
+(() => {
+  // {A} и {B} заменяются на имена игроков
+  const Q = {
+    light: [
+      ['Что ты выберешь на ужин?', ['Пиццу', 'Суши', 'Домашнюю еду', 'Что-то новое']],
+      ['Идеальное утро — это…', ['Поспать до обеда', 'Кофе и тишина', 'Завтрак вдвоём', 'Прогулка или спорт']],
+      ['Чай или кофе?', ['Чай', 'Кофе', 'Какао', 'Ничего из этого']],
+      ['Любимое время года?', ['Зима', 'Весна', 'Лето', 'Осень']],
+      ['Где отдыхать?', ['На море', 'В горах', 'В лесу', 'В большом городе']],
+      ['Кошки или собаки?', ['Кошки', 'Собаки', 'Обе!', 'Никого, спасибо']],
+      ['Какой ты в долгой дороге?', ['Сплю', 'Смотрю в окно', 'Музыка в наушниках', 'Болтаю без остановки']],
+      ['Лучший вечер пятницы — …', ['Фильм под пледом', 'Гулять по городу', 'Играть', 'Лечь спать пораньше']],
+      ['Сладкое или солёное?', ['Сладкое', 'Солёное', 'Острое', 'Всё сразу']],
+      ['Какой фильм выберешь?', ['Комедию', 'Ужасы', 'Мелодраму', 'Фантастику']],
+      ['Ты больше…', ['Сова', 'Жаворонок', 'Когда как', 'Сплю всегда']],
+      ['Утром ты первым делом…', ['Беру телефон', 'Иду в душ', 'Иду есть', 'Ещё 5 минуточек']],
+      ['Любимая погода?', ['Солнце и жара', 'Дождь за окном', 'Снег', 'Туман и прохлада']],
+      ['Как ты отдыхаешь, когда устал(а)?', ['Сплю', 'Музыка', 'Сериал', 'Еда']],
+      ['Какой подарок обрадует больше?', ['Сделанный своими руками', 'Нужная вещь', 'Впечатление', 'Сюрприз без повода']],
+      ['Музыка в машине — это…', ['Громко и подпевать', 'Тихий фон', 'Подкасты', 'Тишина']],
+    ],
+    deep: [
+      ['Что для тебя важнее всего в отношениях?', ['Доверие', 'Поддержка', 'Страсть', 'Смеяться вместе']],
+      ['Как ты чаще показываешь любовь?', ['Словами', 'Заботой и делами', 'Прикосновениями', 'Подарками и сюрпризами']],
+      ['Чего ты боишься больше?', ['Одиночества', 'Неудачи', 'Потерять близких', 'Скуки']],
+      ['Что тебя быстрее успокаивает, когда грустно?', ['Обнимашки', 'Поговорить', 'Побыть одному/одной', 'Отвлечься']],
+      ['Что ты ценишь в себе больше всего?', ['Доброту', 'Ум', 'Упорство', 'Чувство юмора']],
+      ['Ты легко прощаешь?', ['Да, сразу', 'Да, но помню', 'Нужно время', 'Почти никогда']],
+      ['Как ты принимаешь важные решения?', ['Сердцем', 'Головой', 'Советуюсь', 'В последний момент']],
+      ['Что сложнее всего в расстоянии между нами?', ['Нельзя обнять', 'Разный ритм дня', 'Скучать', 'Не видеть глаза']],
+      ['Каким ты видишь нас через 5 лет?', ['В одном доме', 'Путешествуем', 'С питомцем', 'Всё ещё играем тут']],
+      ['Что для тебя «дом»?', ['Место', 'Человек', 'Чувство покоя', 'Запах еды']],
+      ['Что ранит сильнее?', ['Ложь', 'Равнодушие', 'Критика', 'Когда игнорируют']],
+      ['После ссоры ты…', ['Мирюсь первым/первой', 'Жду', 'Делаю вид, что всё ок', 'Хочу всё обсудить']],
+      ['Когда тебе плохо, ты…', ['Сразу рассказываю', 'Молчу, пока не спросят', 'Шучу', 'Ухожу в себя']],
+      ['Что тебя вдохновляет?', ['Люди рядом', 'Природа', 'Музыка и кино', 'Новые места']],
+    ],
+    fun: [
+      ['Каким животным ты был(а) бы один день?', ['Котом', 'Дельфином', 'Птицей', 'Ленивцем']],
+      ['Суперсила на выбор?', ['Телепортация', 'Читать мысли', 'Невидимость', 'Останавливать время']],
+      ['Выиграл(а) миллион. Первым делом…', ['Путешествие', 'Дом', 'Помогу близким', 'Спрячу и никому не скажу']],
+      ['Зомби-апокалипсис. Твоя роль?', ['Лидер', 'Повар', 'Того съедят первым', 'Тайный зомби']],
+      ['Твоё коронное блюдо?', ['Яичница', 'Паста', 'Пельмени из магазина', 'Доставка']],
+      ['Твой стиль танца?', ['Как будто никто не видит', 'Стесняюсь', 'Только после полуночи', 'Почти профессионально']],
+      ['На необитаемый остров возьмёшь…', ['Тебя', 'Телефон с Wi-Fi', 'Гору еды', 'Кровать']],
+      ['Ты в фильме ужасов. Что делаешь?', ['Иду проверить звук', 'Убегаю первым/первой', 'Шучу', 'Спасаю всех']],
+      ['Твой внутренний возраст?', ['5 лет', '16 лет', '30 лет', '80 лет']],
+      ['Что поёшь в караоке?', ['Грустную балладу', 'Хит из детства', 'Рэп', 'Ни за что не пою']],
+      ['Что делаешь, когда никто не видит?', ['Танцую', 'Говорю сам(а) с собой', 'Ем из холодильника', 'Пою']],
+      ['За что тебя покажут в новостях?', ['За подвиг', 'За смешной случай', 'Рекорд по сну', 'Лучшая пара года']],
+      ['Твоё тайное умение?', ['Засыпать где угодно', 'Находить вкусняшки', 'Угадывать фильмы', 'Опаздывать красиво']],
+    ],
+    dream: [
+      ['Куда поехать прямо сейчас?', ['Япония', 'Италия', 'Исландия', 'Тропический остров']],
+      ['Работа мечты?', ['Своё дело', 'Творчество', 'Работать и путешествовать', 'Не работать вообще']],
+      ['Идеальное свидание?', ['Ужин при свечах', 'Пикник под звёздами', 'Приключение', 'Дома в пижамах']],
+      ['Чему хочешь научиться?', ['Играть на инструменте', 'Новому языку', 'Готовить', 'Танцевать']],
+      ['Дом мечты?', ['Квартира с видом на город', 'Домик у моря', 'Дом в лесу', 'Замок']],
+      ['Один свободный день вместе — это…', ['Весь день в кровати', 'Гулять по городу', 'Уехать куда-то', 'Готовить и смотреть фильмы']],
+      ['Какой питомец будет у нас?', ['Кот', 'Собака', 'Оба', 'Хомяк по имени Борис']],
+      ['Наша первая совместная поездка?', ['К морю', 'В горы', 'В большой город', 'Куда глаза глядят']],
+    ],
+    us: [
+      ['Кто первым пишет «доброе утро»?', ['{A}', '{B}', 'Одновременно', 'Кто раньше проснётся']],
+      ['Кто из нас больше скучает?', ['{A}', '{B}', 'Одинаково', 'Никто не признаётся']],
+      ['Кто дольше собирается?', ['{A}', '{B}', 'Оба', 'Никто']],
+      ['Кто лучше готовит?', ['{A}', '{B}', 'Оба', 'Никто — закажем']],
+      ['Кто первым извиняется после ссоры?', ['{A}', '{B}', 'По очереди', 'Тот, кто виноват']],
+      ['Кто из нас ревнивее?', ['{A}', '{B}', 'Оба', 'Никто']],
+      ['Кто громче смеётся?', ['{A}', '{B}', 'Оба', 'Зависит от шутки']],
+      ['Кто первым уснёт во время звонка?', ['{A}', '{B}', 'Оба', 'Никто, мы стойкие']],
+      ['Кто из нас романтичнее?', ['{A}', '{B}', 'Оба', 'Никто, мы практичные']],
+      ['Кто чаще прав в спорах?', ['{A}', '{B}', 'По очереди', 'Тот, кто громче']],
+      ['Как описать нас одним словом?', ['Уютные', 'Смешные', 'Нежные', 'Сумасшедшие']],
+      ['Что тебе больше всего нравится во мне?', ['Внешность', 'Характер', 'Юмор', 'Всё']],
+    ],
+  };
+  const MODES = {
+    mix: { icon: '✨', name: 'Всё подряд', desc: '10 вопросов обо всём', cats: ['light', 'deep', 'fun', 'dream', 'us'], n: 10 },
+    light: { icon: '🍓', name: 'Лёгкие', desc: 'Вкусы, привычки и глупости', cats: ['light', 'fun'], n: 10 },
+    deep: { icon: '🌙', name: 'По душам', desc: 'Серьёзные и мечтательные', cats: ['deep', 'dream'], n: 10 },
+    us: { icon: '💞', name: 'Про нас', desc: 'Кто из вас… и что дальше', cats: ['us', 'dream'], n: 10 },
+    custom: { icon: '✍️', name: 'Свои вопросы', desc: 'По очереди придумываете вопросы друг другу', cats: [], n: 6 },
+  };
+  const TITLES = [
+    [90, 'Одна душа на двоих', '💫'], [75, 'Две половинки', '💞'], [60, 'Отличная пара', '💖'],
+    [45, 'Интересно вместе', '✨'], [30, 'Противоположности притягиваются', '🧲'], [0, 'Ещё столько всего узнать!', '🌱'],
+  ];
+
+  GAMES.usquiz = {
+    id: 'usquiz', title: 'Ты и я', icon: '💞', color: '#ff8fb8',
+    tagline: 'Насколько хорошо вы знаете друг друга?',
+    rules: [
+      'Вопрос показывается обоим. Сначала ответь <b>про себя</b>, потом <b>угадай</b>, что ответит второй.',
+      'Ответы открываются одновременно: совпали — сердечко 💞, угадал(а) — звёздочка ⭐.',
+      'Режимы: всё подряд, лёгкие, по душам, про нас — или придумывайте свои вопросы друг другу.',
+      'В конце — процент совпадения и титул вашей пары. Обсуждайте ответы в Discord — в этом вся соль!',
+    ],
+    info() { const hst = Store.get('us_hist', []); return hst.length ? `совпадение ${hst[hst.length - 1].pct}%` : 'вопросы друг о друге'; },
+    create(ctx) { return new UsQuiz(ctx); },
+  };
+
+  class UsQuiz {
+    constructor(ctx) {
+      this.ctx = ctx;
+      this.side = ctx.isHost ? 'A' : 'B';
+      this.names = ctx.isHost ? { A: ctx.me.name, B: ctx.peer.name } : { A: ctx.peer.name, B: ctx.me.name };
+      this.g = ctx.canvas.getContext('2d');
+      this.sky = new Sky({ density: 0.9 });
+      this.parts = new Particles();
+      this.hearts = [];
+      this.near = 0; this.nearT = 0;
+      this.my = { me: null, guess: null };
+      this.el = h('<div class="us-root"></div>');
+      ctx.ui.appendChild(this.el);
+      if (ctx.isHost) { this.S = { phase: 'menu', i: 0 }; this.broadcast(); }
+      ctx.loop((dt, t) => this.frame(dt, t));
+    }
+    nm(k) { return esc(this.names[k] || (k === 'A' ? 'Хост' : 'Гость')); }
+    fill(s) { return s.replace('{A}', this.names.A).replace('{B}', this.names.B); }
+
+    // ================= Хост =================
+    broadcast() { this.ctx.send({ a: 'S', S: this.S }); this.apply(this.S); }
+    start(mode) {
+      const M = MODES[mode]; if (!M) return;
+      let list = [];
+      if (mode !== 'custom') {
+        const pool = M.cats.flatMap((c) => Q[c]);
+        list = pool.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, M.n).map((i) => pool[i]);
+      }
+      this.list = list;
+      this.S = { phase: 'menu', mode, i: 0, total: M.n, score: { m: 0, A: 0, B: 0 } };
+      this.nextQ();
+    }
+    nextQ() {
+      const S = this.S;
+      S.i++;
+      if (S.i > S.total) { S.phase = 'end'; return this.broadcast(); }
+      S.ans = { A: null, B: null }; S.ready = {};
+      if (S.mode === 'custom') { S.author = S.i % 2 ? 'A' : 'B'; S.phase = 'write'; S.q = null; }
+      else { const [text, opts] = this.list[S.i - 1]; S.q = { text, opts }; S.phase = 'answer'; }
+      this.broadcast();
+    }
+    gotAnswer(side, a) {
+      const S = this.S; if (S.phase !== 'answer' || S.ans[side]) return;
+      S.ans[side] = a;
+      if (S.ans.A && S.ans.B) {
+        S.phase = 'reveal';
+        S.res = { m: S.ans.A.me === S.ans.B.me, A: S.ans.A.guess === S.ans.B.me, B: S.ans.B.guess === S.ans.A.me };
+        if (S.res.m) S.score.m++;
+        if (S.res.A) S.score.A++;
+        if (S.res.B) S.score.B++;
+      }
+      this.broadcast();
+    }
+
+    // ================= Сообщения =================
+    onMsg(d) {
+      const host = this.ctx.isHost;
+      switch (d.a) {
+        case 'S': this.apply(d.S); break;
+        case 'mode': if (host && (this.S.phase === 'menu' || this.S.phase === 'end')) this.start(d.mode); break;
+        case 'ans': if (host) this.gotAnswer(d.side, d.v); break;
+        case 'q': if (host && this.S.phase === 'write' && this.S.author === d.side) { this.S.q = d.q; this.S.phase = 'answer'; this.broadcast(); } break;
+        case 'next': if (host && this.S.phase === 'reveal') this.nextQ(); break;
+        case 'menu': if (host) { this.S = { phase: 'menu', i: 0 }; this.broadcast(); } break;
+      }
+    }
+    ask(a, extra = {}) { const m = { a, side: this.side, ...extra }; if (this.ctx.isHost) this.onMsg(m); else this.ctx.send(m); }
+
+    apply(S) {
+      const prev = this._key;
+      this.S = S;
+      const key = `${S.phase}:${S.i}:${S.ans ? !!S.ans.A + '' + !!S.ans.B : ''}:${S.mode}`;
+      this._key = key;
+      if (S.score && S.i) this.nearT = (S.score.m + (S.score.A + S.score.B) / 2) / Math.max(1, S.i - (S.phase === 'reveal' || S.phase === 'end' ? 0 : 1));
+      if (key === prev) return;
+      // новый вопрос — сбрасываем свой незаконченный выбор
+      const qk = `${S.mode}|${S.i}|${S.q ? S.q.text : ''}`;
+      if (qk !== this._qk) { this._qk = qk; this.my = { me: null, guess: null }; }
+      const was = (prev || '').split(':')[0];
+      if (S.phase === 'reveal' && was !== 'reveal') this.onReveal();
+      if (S.phase === 'end' && was !== 'end') this.onEnd();
+      this.render();
+    }
+    onReveal() {
+      const r = this.S.res;
+      if (r.m) { SFX.play('win'); this.burst(24); } else SFX.play('chime');
+      if (r[this.side]) setTimeout(() => SFX.play('coin'), 300);
+    }
+    onEnd() {
+      SFX.play('win'); setTimeout(() => SFX.play('chime'), 900); this.burst(50);
+      const S = this.S, pct = this.pct();
+      const hst = Store.get('us_hist', []);
+      hst.push({ d: Date.now(), mode: S.mode, pct }); Store.set('us_hist', hst.slice(-30));
+    }
+    pct() { const S = this.S; return Math.round(((S.score.m + (S.score.A + S.score.B) / 2) / Math.max(1, S.total)) * 100); }
+    burst(n) { for (let i = 0; i < n; i++) this.hearts.push({ x: rand(0.2, 0.8), y: 1.05, vy: rand(0.12, 0.3), s: rand(10, 26), ph: rand(0, TAU), c: pick(['#ff8fb8', '#ffb3d6', '#ff6b9c', '#ffd27a', '#c9a6ff']), t: 0 }); }
+
+    // ================= Экраны =================
+    render() {
+      const S = this.S, el = this.el;
+      let html = '';
+      if (S.phase === 'menu') {
+        html = `<div class="panel us-card"><h2>💞 Ты и я</h2><p class="sub">${this.nm('A')} и ${this.nm('B')}: насколько вы знаете друг друга? Выберите режим:</p>
+          <div class="us-modes">${Object.entries(MODES).map(([id, m]) => `<button class="us-mode" data-mode="${id}"><span class="i">${m.icon}</span><b>${m.name}</b><span>${m.desc}</span></button>`).join('')}</div>
+          ${this.histHtml()}</div>`;
+      } else if (S.phase === 'write') {
+        const mine = S.author === this.side;
+        html = mine ? `<div class="panel us-card"><div class="us-k">ВОПРОС ${S.i} ИЗ ${S.total} · ТВОЯ ОЧЕРЕДЬ</div><h3>Придумай вопрос для ${this.nm(this.side === 'A' ? 'B' : 'A')}</h3>
+            <input class="inp" id="usQ" maxlength="90" placeholder="Например: Какой наш лучший день?">
+            <div class="us-opts-in">${[1, 2, 3, 4].map((i) => `<input class="inp" data-o="${i}" maxlength="40" placeholder="Вариант ${i}${i > 2 ? ' (можно пусто)' : ''}">`).join('')}</div>
+            <button class="btn" id="usSend">Задать вопрос ✦</button></div>`
+          : `<div class="panel us-card us-wait"><div class="us-k">ВОПРОС ${S.i} ИЗ ${S.total}</div><div class="orbit"><i></i><i></i></div><h3>${this.nm(S.author)} придумывает вопрос…</h3><p class="sub">Подожди немного — будет интересно ✍️</p></div>`;
+      } else if (S.phase === 'answer') {
+        const q = S.q, other = this.side === 'A' ? 'B' : 'A', done = S.ans && S.ans[this.side];
+        const step = done ? 2 : this.my.me == null ? 0 : 1;
+        const opts = q.opts.map((o, i) => ({ o: this.fill(o), i }));
+        html = `<div class="panel us-card"><div class="us-k">ВОПРОС ${S.i} ИЗ ${S.total}${S.mode === 'custom' ? ` · от ${this.nm(S.author)}` : ''}</div>
+          <h3 class="us-q">${esc(this.fill(q.text))}</h3>
+          ${step === 0 ? `<div class="us-step">1 · Твой ответ</div><div class="us-opts">${opts.map(({ o, i }) => `<button class="us-opt" data-me="${i}">${esc(o)}</button>`).join('')}</div>` : ''}
+          ${step === 1 ? `<div class="us-step">2 · А что ответит ${this.nm(other)}? 🤔</div><div class="us-opts">${opts.map(({ o, i }) => `<button class="us-opt g" data-guess="${i}">${esc(o)}</button>`).join('')}</div>
+            <button class="btn ghost small us-back" id="usBack">← изменить свой ответ</button>` : ''}
+          ${step === 2 ? `<div class="us-done">Твой ответ: <b>${esc(opts[done.me].o)}</b><br>Догадка: <b>${esc(opts[done.guess].o)}</b></div>` : ''}
+          <div class="us-status">${S.ans && S.ans[other] ? `<span class="ok">${this.nm(other)} уже ответил(а) ✓</span>` : `<span>${this.nm(other)} думает…</span>`}</div></div>`;
+      } else if (S.phase === 'reveal') {
+        const q = S.q, r = S.res, A = S.ans.A, B = S.ans.B;
+        const o = (i) => esc(this.fill(q.opts[i]));
+        const col = (k, a) => `<div class="us-col ${k === this.side ? 'mine' : ''}"><div class="who">${this.nm(k)}</div><div class="ans">${o(a.me)}</div>
+          <div class="gs ${r[k] ? 'yes' : 'no'}">${r[k] ? '⭐ угадал(а)!' : `думал(а): ${o(a.guess)}`}</div></div>`;
+        html = `<div class="panel us-card"><div class="us-k">ВОПРОС ${S.i} ИЗ ${S.total}</div><h3 class="us-q">${esc(this.fill(q.text))}</h3>
+          <div class="us-reveal">${col('A', A)}<div class="us-mid">${r.m ? '<span class="match">💞<br>совпали!</span>' : '<span class="diff">✦</span>'}</div>${col('B', B)}</div>
+          <div class="us-score">💞 ${S.score.m} · ⭐ ${this.nm('A')} ${S.score.A} · ⭐ ${this.nm('B')} ${S.score.B}</div>
+          <button class="btn" id="usNext">${S.i >= S.total ? 'Итоги ✦' : 'Следующий вопрос →'}</button></div>`;
+      } else if (S.phase === 'end') {
+        const p = this.pct(), T = TITLES.find(([m]) => p >= m);
+        const kA = Math.round((S.score.A / S.total) * 100), kB = Math.round((S.score.B / S.total) * 100);
+        html = `<div class="panel us-card us-end"><div class="us-k">ИТОГИ · ${MODES[S.mode].name.toUpperCase()}</div>
+          <div class="us-big">${T[2]}</div><div class="us-pct">${p}%</div><h3>${T[1]}</h3>
+          <div class="us-bars">
+            <div><span>Ответы совпали</span><i style="--w:${Math.round((S.score.m / S.total) * 100)}%"></i><b>${S.score.m}/${S.total}</b></div>
+            <div><span>${this.nm('A')} знает ${this.nm('B')}</span><i style="--w:${kA}%"></i><b>${kA}%</b></div>
+            <div><span>${this.nm('B')} знает ${this.nm('A')}</span><i style="--w:${kB}%"></i><b>${kB}%</b></div>
+          </div>
+          <button class="btn" id="usAgain">Ещё раунд ✦</button></div>`;
+      }
+      el.innerHTML = html;
+      el.querySelectorAll('[data-mode]').forEach((b) => (b.onclick = () => { SFX.play('click'); this.ask('mode', { mode: b.dataset.mode }); }));
+      el.querySelectorAll('[data-me]').forEach((b) => (b.onclick = () => { SFX.play('pop'); this.my.me = +b.dataset.me; this.render(); }));
+      el.querySelectorAll('[data-guess]').forEach((b) => (b.onclick = () => { SFX.play('chime'); this.my.guess = +b.dataset.guess; this.ask('ans', { v: { ...this.my } }); }));
+      const back = $('#usBack', el); if (back) back.onclick = () => { this.my.me = null; this.render(); };
+      const nx = $('#usNext', el); if (nx) nx.onclick = () => { SFX.play('click'); this.ask('next'); };
+      const ag = $('#usAgain', el); if (ag) ag.onclick = () => { SFX.play('click'); this.ask('menu'); };
+      const send = $('#usSend', el);
+      if (send) send.onclick = () => {
+        const text = $('#usQ', el).value.trim();
+        const opts = [...el.querySelectorAll('[data-o]')].map((i) => i.value.trim()).filter(Boolean);
+        if (!text || opts.length < 2) { this.ctx.toast('Нужен вопрос и хотя бы 2 варианта ✍️'); return; }
+        SFX.play('chime');
+        this.ask('q', { q: { text: text.replace(/[{}]/g, ''), opts: opts.map((o) => o.replace(/[{}]/g, '')) } });
+      };
+    }
+    histHtml() {
+      const hst = Store.get('us_hist', []); if (!hst.length) return '';
+      return `<div class="us-hist"><div class="us-k">ВАШИ ПРОШЛЫЕ РАУНДЫ</div>${hst.slice(-6).reverse().map((x) => `<span>${MODES[x.mode]?.icon || '✦'} ${x.pct}% <small>${new Date(x.d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</small></span>`).join('')}</div>`;
+    }
+
+    // ================= Фон: две звезды, которые сближаются =================
+    frame(dt, t) {
+      const g = this.g, cv = this.ctx.canvas, dpr = Math.min(devicePixelRatio || 1, 2), w = innerWidth, hh = innerHeight;
+      if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(hh * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); }
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this.sky.resize(w, hh); this.sky.draw(g, t, dt);
+      this.near = lerp(this.near, clamp(this.nearT || 0, 0, 1), 1 - Math.exp(-dt * 1.5));
+      const cx = w / 2, cy = hh * (w > hh ? 0.5 : 0.16), R = Math.min(w, hh) * lerp(0.36, 0.1, this.near);
+      const a = t * 0.35;
+      const sA = { x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R * 0.35 }, sB = { x: cx - Math.cos(a) * R, y: cy - Math.sin(a) * R * 0.35 };
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = `rgba(255,180,220,${0.08 + this.near * 0.2})`; g.lineWidth = 1.5;
+      g.beginPath(); g.ellipse(cx, cy, R, R * 0.35, 0, 0, TAU); g.stroke();
+      Glow.draw(g, sA.x, sA.y, 70, '#ffb36b', 0.75); Glow.draw(g, sB.x, sB.y, 70, '#8fb8ff', 0.75);
+      Glow.draw(g, cx, cy, 160 * this.near + 30, '#ff8fb8', 0.25 * this.near);
+      if (Math.random() < dt * 20) { this.parts.emit(sA.x, sA.y, { n: 1, speed: 20, life: 1.4, size: 6, color: '#ffd9a8' }); this.parts.emit(sB.x, sB.y, { n: 1, speed: 20, life: 1.4, size: 6, color: '#bcd6ff' }); }
+      g.globalCompositeOperation = 'source-over';
+      drawGlyph(g, 'star', sA.x, sA.y, 18, '#fff', 2); drawGlyph(g, 'star', sB.x, sB.y, 18, '#fff', 2);
+      g.font = '600 12px Comfortaa'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,230,210,0.8)';
+      g.fillText(this.names.A, sA.x, sA.y + 26); g.fillStyle = 'rgba(210,225,255,0.8)'; g.fillText(this.names.B, sB.x, sB.y + 26);
+      this.parts.update(dt); this.parts.draw(g);
+      // сердечки
+      for (let i = this.hearts.length - 1; i >= 0; i--) {
+        const p = this.hearts[i]; p.t += dt; p.y -= p.vy * dt;
+        if (p.y < -0.1) { this.hearts.splice(i, 1); continue; }
+        const x = p.x * w + Math.sin(p.t * 2 + p.ph) * 20, y = p.y * hh;
+        g.globalAlpha = Math.min(1, p.t * 2) * 0.85; g.fillStyle = p.c;
+        const s = p.s / 2;
+        g.beginPath(); g.moveTo(x, y + s * 0.95);
+        g.bezierCurveTo(x - s * 1.4, y + s * 0.1, x - s * 1.05, y - s * 1.05, x, y - s * 0.4);
+        g.bezierCurveTo(x + s * 1.05, y - s * 1.05, x + s * 1.4, y + s * 0.1, x, y + s * 0.95); g.fill();
+        g.globalAlpha = 1;
+      }
+    }
+    resync() { if (this.ctx.isHost && this.S) this.broadcast(); }
+    destroy() {}
+  }
+})();
