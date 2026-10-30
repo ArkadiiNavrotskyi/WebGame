@@ -1,0 +1,15 @@
+{
+  "name": "Наше небо",
+  "short_name": "Наше небо",
+  "description": "Пять игр для двоих",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#05061a",
+  "theme_color": "#05061a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
