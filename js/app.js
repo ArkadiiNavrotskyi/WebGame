@@ -41,7 +41,7 @@ const App = {
         g.setTransform(dpr, 0, 0, dpr, 0, 0);
         this.sky.resize(w, hh);
         this.sky.draw(g, t, dt);
-        if (this.screen === 'hub' || this.screen === 'roles') this.drawHub(g, w, hh, t, dt);
+        if (this.screen === 'hub') this.drawHub(g, w, hh, t, dt);
       }
       requestAnimationFrame(step);
     };
@@ -424,12 +424,12 @@ const App = {
         <h2>${def.icon} ${esc(def.title)}</h2>
         <div class="desc">${esc(def.tagline)}</div>
         ${rolesHtml}
-        <div class="rules" style="margin-top:14px"><ul style="margin:0;padding-left:18px">${def.rules.map((r) => `<li>${r}</li>`).join('')}</ul></div>
         <div class="readyline"><span>Ты: ${myReady ? '<b>готов(а) ✓</b>' : 'не готов(а)'}</span><span>${esc(this.peer?.name || '')}: ${peerReady ? '<b>готов(а) ✓</b>' : 'выбирает…'}</span></div>
         <div class="row" style="margin-top:6px">
           ${def.roles ? '<button class="btn ghost" id="swap">⇄ Поменяться</button>' : ''}
           <button class="btn" id="ready">${myReady ? 'Жду…' : 'Готов(а)! ✦'}</button>
         </div>
+        <div class="rules" style="margin-top:14px"><ul style="margin:0;padding-left:18px">${def.rules.map((r) => `<li>${r}</li>`).join('')}</ul></div>
         <button class="btn ghost small" id="back" style="margin:12px auto 0;display:block">← назад в хаб</button>
       </div>`);
     this.setUI(el);
