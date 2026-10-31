@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function h(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
 window.GAMES = window.GAMES || {};
-const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands', 'house', 'hotel', 'train', 'sanatorium'];
+const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands', 'house', 'hotel', 'train', 'sanatorium', 'cape'];
 
 const App = {
   net: new Net(),
@@ -302,7 +302,7 @@ const App = {
     const el = h(`
       <div class="panel">
         <h1 class="title">${esc(CONFIG.siteTitle)}</h1>
-        <p class="subtitle">шестнадцать игр для двоих · на разных концах карты</p>
+        <p class="subtitle">семнадцать игр для двоих · на разных концах карты</p>
         <label class="lbl">Как тебя зовут?</label>
         <input class="inp" id="name" maxlength="16" placeholder="Твоё имя" value="${esc(this.me.name)}" autocomplete="off">
         ${room ? `
@@ -747,6 +747,7 @@ const ISLAND_TOP = {
   hotel: ['#dfe8f0', '#7a8ea4'],
   train: ['#7a8a6a', '#2e3a28'],
   sanatorium: ['#e8d8e8', '#8a7a9a'],
+  cape: ['#4a5a6a', '#1a2430'],
   maze: ['#8a7aa8', '#3d3258'], cats: ['#ffcf9a', '#c9783a'], lights: ['#ffe9a8', '#5a6ad6'],
 };
 
@@ -988,6 +989,20 @@ const MINI = {
     for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const on = i === 1 && j === 0; g.fillStyle = on ? `rgba(220,170,90,${flick})` : '#1a1a20'; g.fillRect(-r * 0.32 + i * r * 0.24, -r * 0.54 + j * r * 0.24, r * 0.12, r * 0.14); }
     g.globalCompositeOperation = 'lighter'; Glow.draw(g, -r * 0.02, -r * 0.47, r * 0.35, '#ffb060', 0.35 * flick); g.globalCompositeOperation = 'source-over';
     for (let i = 0; i < 3; i++) { const k = (t * 0.15 + i / 3) % 1; g.fillStyle = `rgba(180,190,190,${0.18 * Math.sin(k * Math.PI)})`; g.beginPath(); g.ellipse(-r + k * r * 2, -r * 0.15 - i * r * 0.12, r * 0.5, r * 0.08, 0, 0, TAU); g.fill(); }
+  },
+  cape(g, r, t) {
+    // чёрная скала, полосатый маяк, вращающийся луч и снег
+    g.fillStyle = '#121418'; g.beginPath(); g.moveTo(-r * 0.8, -r * 0.05); g.lineTo(-r * 0.4, -r * 0.35); g.lineTo(r * 0.1, -r * 0.3); g.lineTo(r * 0.7, -r * 0.1); g.lineTo(r * 0.8, -r * 0.05); g.fill();
+    const x = -r * 0.1, y = -r * 0.32, s = r * 0.75;
+    g.fillStyle = '#e8e4dc'; g.beginPath(); g.moveTo(x - s * 0.12, y); g.lineTo(x - s * 0.08, y - s); g.lineTo(x + s * 0.08, y - s); g.lineTo(x + s * 0.12, y); g.fill();
+    g.fillStyle = '#b02828'; for (let i = 0; i < 3; i++) { const yy = y - s * (0.15 + i * 0.3); g.fillRect(x - s * 0.115 + i * s * 0.012, yy - s * 0.12, s * 0.23 - i * s * 0.024, s * 0.12); }
+    g.fillStyle = '#1a1a1e'; g.fillRect(x - s * 0.11, y - s * 1.04, s * 0.22, s * 0.04); g.fillRect(x - s * 0.06, y - s * 1.14, s * 0.12, s * 0.1);
+    const a = t * 1.2, lx = x, ly = y - s * 1.09;
+    g.globalCompositeOperation = 'lighter';
+    const gr = g.createLinearGradient(lx, ly, lx + Math.cos(a) * r * 1.4, ly); gr.addColorStop(0, 'rgba(255,240,190,0.55)'); gr.addColorStop(1, 'rgba(255,240,190,0)');
+    g.fillStyle = gr; g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + Math.cos(a) * r * 1.4, ly - r * 0.18); g.lineTo(lx + Math.cos(a) * r * 1.4, ly + r * 0.12); g.fill();
+    Glow.draw(g, lx, ly, r * 0.25, '#fff2c0', 0.9); g.globalCompositeOperation = 'source-over';
+    g.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < 12; i++) { const k = (t * 0.2 + i * 0.173) % 1; g.fillRect(-r * 0.8 + ((i * 0.37) % 1) * r * 1.6, -r * 1.3 + k * r * 1.2, 2, 2); }
   },
   sanatorium(g, r, t) {
     // белый корпус с колоннами у озера, белая ночь и часы на фронтоне
