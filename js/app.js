@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function h(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
 window.GAMES = window.GAMES || {};
-const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights'];
+const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands'];
 
 const App = {
   net: new Net(),
@@ -295,7 +295,7 @@ const App = {
     const el = h(`
       <div class="panel">
         <h1 class="title">${esc(CONFIG.siteTitle)}</h1>
-        <p class="subtitle">одиннадцать игр для двоих · на разных концах карты</p>
+        <p class="subtitle">двенадцать игр для двоих · на разных концах карты</p>
         <label class="lbl">Как тебя зовут?</label>
         <input class="inp" id="name" maxlength="16" placeholder="Твоё имя" value="${esc(this.me.name)}" autocomplete="off">
         ${room ? `
@@ -575,7 +575,7 @@ const App = {
     this.showLost(false);
     this.gui.innerHTML = '';
     document.body.classList.remove('playing', 'landscape');
-    const c = $('#game'); c.getContext('2d').setTransform(1, 0, 0, 1, 0, 0);
+    const c = $('#game');
     // новый холст, чтобы старые обработчики событий не мешали
     const nc = c.cloneNode(false); c.replaceWith(nc);
   },
@@ -621,6 +621,7 @@ const ISLAND_ROCK = [[-1, 0], [-0.88, 0.22], [-0.7, 0.42], [-0.55, 0.62], [-0.32
 const ISLAND_TOP = {
   constellation: ['#a58bff', '#5a3fb0'], lighthouse: ['#f1d9a4', '#c49a5c'], keys: ['#6cc9b4', '#2f7f78'], garden: ['#86e39a', '#3b9a5e'], cards: ['#f3c76b', '#b0782c'],
   bomb: ['#f2a07a', '#a3453a'], starfall: ['#9fb8ff', '#4a5cc0'], usquiz: ['#ffb3d1', '#c0507e'],
+  islands: ['#9fe7c4', '#3f9a7a'],
   maze: ['#8a7aa8', '#3d3258'], cats: ['#ffcf9a', '#c9783a'], lights: ['#ffe9a8', '#5a6ad6'],
 };
 
@@ -840,6 +841,17 @@ const MINI = {
     g.fillStyle = '#ffd36b'; g.beginPath(); g.arc(sx, y, r * 0.17, 0, TAU); g.fill();
     g.fillStyle = '#e6ecff'; g.beginPath(); g.arc(mx, y, r * 0.16, Math.PI * 0.3, Math.PI * 1.7); g.arc(mx + r * 0.08, y, r * 0.13, Math.PI * 1.55, Math.PI * 0.45, true); g.fill();
     g.save(); g.translate(0, y + r * 0.35 + a * r); g.rotate(Math.PI / 4); g.fillStyle = '#f4f8ff'; g.fillRect(-r * 0.03, -r * 0.14, r * 0.06, r * 0.28); g.restore();
+  },
+  islands(g, r, t) {
+    // маленький островок с деревцем и двумя огоньками
+    g.fillStyle = '#9a6a48'; g.beginPath(); g.moveTo(-r * 0.45, -r * 0.55); g.lineTo(r * 0.45, -r * 0.55); g.lineTo(0, -r * 0.1); g.fill();
+    g.fillStyle = '#86de8f'; g.beginPath(); g.ellipse(0, -r * 0.58, r * 0.48, r * 0.14, 0, 0, TAU); g.fill();
+    g.fillStyle = '#7a5236'; g.fillRect(-r * 0.04, -r * 0.95, r * 0.08, r * 0.38);
+    g.fillStyle = '#5fc27a'; g.beginPath(); g.arc(0, -r * 1.02, r * 0.2, 0, TAU); g.arc(-r * 0.12, -r * 0.9, r * 0.14, 0, TAU); g.arc(r * 0.13, -r * 0.92, r * 0.14, 0, TAU); g.fill();
+    const a = t * 1.4;
+    g.globalCompositeOperation = 'lighter';
+    for (const [d, c] of [[0, '#ffb347'], [Math.PI, '#8fb0ff']]) Glow.draw(g, Math.cos(a + d) * r * 0.7, -r * 0.75 + Math.sin(a + d) * r * 0.18, r * 0.3, c, 0.95);
+    g.globalCompositeOperation = 'source-over';
   },
 };
 

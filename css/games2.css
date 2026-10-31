@@ -117,3 +117,16 @@
   .ct-hc { width: 80px; }
   .ct-hand { padding: 16px 8px 4px; }
 }
+
+/* ================= Два огонька (3D) ================= */
+.is-hud { display: flex; gap: 14px; align-items: center; font-size: 14px; white-space: nowrap; padding: 8px 14px; }
+#isStars { color: #ffe27a; font-weight: 700; }
+#isFrost { color: #bfe9ff; font-weight: 700; }
+.is-tools { position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); display: flex; gap: 6px; pointer-events: auto; }
+.is-tools .iconbtn { margin: 0; }
+.is-hint { position: absolute; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translate(-50%, 10px); padding: 10px 18px; border-radius: 999px; background: rgba(14, 12, 40, .7); border: 1px solid rgba(255, 220, 160, .5); font-size: 15px; font-weight: 700; color: #ffe7a6; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none !important; white-space: nowrap; }
+.is-hint.on { opacity: 1; transform: translate(-50%, 0); }
+@media (pointer: coarse) { .is-hint { bottom: 200px; } }
+@media (pointer: coarse) and (orientation: landscape) { .is-hint { bottom: 24px; } }
+.is-load { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 15px; background: #120e30; }
+@media (max-width: 640px) { .is-root .g-top { top: calc(max(12px, env(safe-area-inset-top)) + 50px); } .is-hud { font-size: 12px; gap: 10px; padding: 6px 10px; } }
