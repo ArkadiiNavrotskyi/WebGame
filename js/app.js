@@ -463,7 +463,7 @@ const App = {
     const t = $('#connText'); if (!t) return;
     const on = this.net.connected;
     $('#conn .dot').classList.toggle('off', !on);
-    t.textContent = on ? `${this.peer ? this.peer.name : ''} · ${this.net.rtt || '—'} мс` : (typeof status === 'string' ? status : (this.net.isHost ? 'ждём второго игрока…' : 'переподключение…'));
+    t.textContent = on ? `${this.peer ? this.peer.name : ''} · ${this.net.rtt || '—'} мс${this.net.local || this.net.direct ? '' : ' · через сервер'}` : (typeof status === 'string' ? status : (this.net.isHost ? 'ждём второго игрока…' : 'переподключение…'));
   },
 
   // ---------- Предложить игру ----------

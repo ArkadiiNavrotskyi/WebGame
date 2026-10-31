@@ -120,12 +120,14 @@ class Net {
   on(ev, fn) { (this.handlers[ev] ||= []).push(fn); }
   emit(ev, ...a) { (this.handlers[ev] || []).forEach((f) => f(...a)); }
   topic(x) { return `${CONFIG.peerPrefix}${this.code.id}/${x}`; }
+  get direct() { return !!(this.dc && this.dc.readyState === 'open'); }
 
   send(obj) {
     if (!this.connected) return;
     try {
       if (this.local) this.bc.postMessage({ from: this.isHost ? 'h' : 'g', data: obj });
       else if (this.dc && this.dc.readyState === 'open') this.dc.send(JSON.stringify(obj));
+      else if (this.sig && this.relayTo) this.sig.pub(this.relayTo, { k: 'd', d: obj, g: this.gid });
     } catch (e) { console.warn('send failed', e); }
   }
 
@@ -156,15 +158,15 @@ class Net {
     this._closePc();
     const pc = new RTCPeerConnection({ iceServers: CONFIG.iceServers });
     this.pc = pc;
-    pc.onconnectionstatechange = () => { if (this.pc === pc && pc.connectionState === 'failed') { this._closePc(); this._lost(); } };
+    pc.onconnectionstatechange = () => { if (this.pc === pc && pc.connectionState === 'failed') this._closePc(); };
     return pc;
   }
   _closePc() { const pc = this.pc, dc = this.dc; this.pc = null; this.dc = null; try { dc && dc.close(); } catch (e) {} try { pc && pc.close(); } catch (e) {} }
   _bindDc(dc) {
     this.dc = dc;
-    dc.onopen = () => { if (this.dc !== dc) return; this._retry = 0; this._setConnected(true); };
+    dc.onopen = () => { if (this.dc !== dc) return; this._retry = 0; this._setConnected(true); this.emit('rtt', this.rtt); };
     dc.onmessage = (e) => { if (this.dc !== dc) return; let d; try { d = JSON.parse(e.data); } catch (er) { return; } this._gotData(d); };
-    dc.onclose = () => { if (this.dc === dc) { this.dc = null; this._lost(); } };
+    dc.onclose = () => { if (this.dc === dc) this.dc = null; };
   }
 
   // ---------- Хост ----------
@@ -178,11 +180,17 @@ class Net {
     this.emit('status', 'Комната открыта');
   }
   async _hostSig(m) {
+    if (m.k === 'd') { if (m.g === this.gid) this._gotData(m.d); return; }
     if (m.k === 'hello') {
+      this.relayTo = this.topic('g/' + m.gid);
+      this.sig.pub(this.relayTo, { k: 'rack' });
       // повтор того же «привет» — просто шлём уже готовое предложение ещё раз
       if (m.j && m.j === this.joinId) { if (this.lastOffer) this.sig.pub(this.topic('g/' + m.gid), this.lastOffer); return; }
       // гость (новый или вернувшийся) — заводим свежее соединение
       this.joinId = m.j; this.lastOffer = null;
+      this.gid = m.gid; this._retry = 0;
+      if (this.connected) this._setConnected(false);
+      this._setConnected(true);
       const sid = Math.random().toString(36).slice(2);
       this.sid = sid; this.gid = m.gid;
       const pc = this._newPc();
@@ -213,25 +221,27 @@ class Net {
         this.sig.sub(this.topic('g/' + this.gid));
       }
       this._onOffer = () => { offered = true; };
+      this.relayTo = null;
       this._onOpen = () => { if (!done) { done = true; clearInterval(hello); resolve(); } };
       try { await this.sig.whenReady(12000); } catch (e) { return fail('server'); }
-      const say = () => { if (!offered && !done) this.sig.pub(this.topic('h'), { k: 'hello', gid: this.gid, j: joinId }); };
+      const say = () => { if (!offered && !this.connected && !done) this.sig.pub(this.topic('h'), { k: 'hello', gid: this.gid, j: joinId }); };
       say();
       hello = setInterval(say, 2000);
-      setTimeout(() => { if (!offered) fail('notfound'); }, 12000);
-      setTimeout(() => fail('p2p'), 25000);
+      setTimeout(() => { if (!this.connected) fail('notfound'); }, 12000);
     });
   }
   async _guestSig(m) {
+    if (m.k === 'd') { this._gotData(m.d); return; }
+    if (m.k === 'rack' || m.k === 'offer') {
+      this.relayTo = this.topic('h');
+      if (!this.connected) { this._retry = 0; this._setConnected(true); }
+      this._onOpen && this._onOpen();
+    }
     if (m.k !== 'offer' || m.sid === this.sid) return;
     this.sid = m.sid;
     this._onOffer && this._onOffer();
     const pc = this._newPc();
-    pc.ondatachannel = (e) => {
-      this._bindDc(e.channel);
-      const prev = e.channel.onopen;
-      e.channel.onopen = () => { prev && prev(); this._onOpen && this._onOpen(); };
-    };
+    pc.ondatachannel = (e) => this._bindDc(e.channel);
     try {
       await pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
       await pc.setLocalDescription(await pc.createAnswer());
