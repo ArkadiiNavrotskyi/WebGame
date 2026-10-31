@@ -59,6 +59,10 @@ window.HouseArt = (() => {
     concrete: (g, s) => { g.fillStyle = '#3a3836'; g.fillRect(0, 0, s, s); strokes(g, s, ['#4a4744', '#2c2a28', '#55504a'], 500, 30, 0.35, 3); grime(g, s, 1.2, 31); cracks(g, s, 37); },
     plaster: (g, s) => { g.fillStyle = '#4a4640'; g.fillRect(0, 0, s, s); strokes(g, s, ['#57524a', '#3a3632', '#615b52'], 400, 40, 0.3, 4); grime(g, s, 0.8, 41); cracks(g, s, 43); },
     cloth: (g, s) => { g.fillStyle = '#b8b2a2'; g.fillRect(0, 0, s, s); for (let i = 0; i < s; i += 3) { g.fillStyle = `rgba(0,0,0,${0.04 + (i % 6 ? 0 : 0.03)})`; g.fillRect(0, i, s, 1); g.fillRect(i, 0, 1, s); } grime(g, s, 0.9, 47); },
+    damask_blue: (g, s) => damask(g, s, '#1e2a3a', '#45607a', 37),
+    wood_panel: (g, s) => { g.fillStyle = '#3a2618'; g.fillRect(0, 0, s, s); for (let i = 0; i < 4; i++) { g.save(); g.beginPath(); g.rect(i * s / 4, 0, s / 4, s); g.clip(); grain(g, s, '#24160c', '#4e3420', 71 + i); g.restore(); g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(i * s / 4, 0, 3, s); g.fillStyle = 'rgba(255,220,180,0.08)'; g.fillRect(i * s / 4 + 3, 0, 2, s); } g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(0, s * 0.62, s, 6); grime(g, s, 0.8, 73); },
+    ice: (g, s) => { const gr = g.createLinearGradient(0, 0, s, s); gr.addColorStop(0, '#9ab8c8'); gr.addColorStop(1, '#4a6878'); g.fillStyle = gr; g.fillRect(0, 0, s, s); strokes(g, s, ['#e8f6ff', '#7a98a8', '#c8e0ee'], 500, 40, 0.35, 2); cracks(g, s, 79); g.globalAlpha = 0.5; cracks(g, s, 83); g.globalAlpha = 1; },
+    snow: (g, s) => { g.fillStyle = '#c8d4dc'; g.fillRect(0, 0, s, s); strokes(g, s, ['#ffffff', '#a8b8c4', '#e0e8ee'], 600, 30, 0.4, 4); },
     wood_dark: (g, s) => { g.fillStyle = '#2e1d12'; g.fillRect(0, 0, s, s); grain(g, s, '#1e120a', '#3d2818', 53); },
     wood_mid: (g, s) => { g.fillStyle = '#3e2818'; g.fillRect(0, 0, s, s); grain(g, s, '#24160c', '#52361f', 59); grime(g, s, 0.7, 61); },
   };
