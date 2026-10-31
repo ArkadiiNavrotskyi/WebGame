@@ -450,7 +450,7 @@ window.StoryEngine = (() => {
         const wall = (w, hgt, mat, x, z, ry) => { const m = new T.Mesh(new T.PlaneGeometry(w, hgt), mat); m.position.set(x, hgt / 2, z); m.rotation.y = ry; m.receiveShadow = true; g.add(m); };
         wall(W, H, wm([W / 2.4, H / 2.4]), 0, -D / 2, 0); wall(W, H, wm([W / 2.4, H / 2.4]), 0, D / 2, Math.PI);
         wall(D, H, wm([D / 2.4, H / 2.4]), -W / 2, 0, Math.PI / 2); wall(D, H, wm([D / 2.4, H / 2.4]), W / 2, 0, -Math.PI / 2);
-        const fl = new T.Mesh(new T.PlaneGeometry(W, D), new T.MeshStandardMaterial({ map: A.surf(def.floor, [W / 2.2, D / 2.2]), roughness: 0.8 })); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; g.add(fl);
+        if (def.floor !== false) { const fl = new T.Mesh(new T.PlaneGeometry(W, D), new T.MeshStandardMaterial({ map: A.surf(def.floor, [W / 2.2, D / 2.2]), roughness: 0.8 })); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; g.add(fl); }
         const ce = new T.Mesh(new T.PlaneGeometry(W, D), new T.MeshStandardMaterial({ map: A.surf(def.ceil || 'plaster', [W / 2.5, D / 2.5]), roughness: 0.95 })); ce.rotation.x = Math.PI / 2; ce.position.y = H; g.add(ce);
         if (def.trim !== false) { const tm = A.mat('wood'); for (const [w, x, z, ry] of [[W, 0, -D / 2 + 0.02, 0], [W, 0, D / 2 - 0.02, 0], [D, -W / 2 + 0.02, 0, Math.PI / 2], [D, W / 2 - 0.02, 0, Math.PI / 2]]) { const b = A.B(w, 0.16, 0.03, tm, x, 0.08, z); b.rotation.y = ry; g.add(b); } }
         g.add(new T.HemisphereLight(def.amb[0], def.amb[1], def.amb[2]));
