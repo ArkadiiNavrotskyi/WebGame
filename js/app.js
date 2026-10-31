@@ -37,7 +37,7 @@ const App = {
       const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
       const { v } = await r.json();
       const p = new URLSearchParams(location.search);
-      if (v > (CONFIG.version || 0) && p.get('u') !== String(v) && this.screen === 'start') {
+      if (v > (CONFIG.version || 0) && p.get('u') !== String(v) && (this.screen === 'start' || this.screen === 'diag')) {
         p.set('u', v);
         location.replace(`${location.pathname}?${p}`);
       }
