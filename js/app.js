@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function h(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
 window.GAMES = window.GAMES || {};
-const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands', 'house', 'hotel', 'train', 'sanatorium', 'cape'];
+const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands', 'house', 'hotel', 'train', 'sanatorium', 'cape', 'theatre'];
 
 const App = {
   net: new Net(),
@@ -302,7 +302,7 @@ const App = {
     const el = h(`
       <div class="panel">
         <h1 class="title">${esc(CONFIG.siteTitle)}</h1>
-        <p class="subtitle">семнадцать игр для двоих · на разных концах карты</p>
+        <p class="subtitle">восемнадцать игр для двоих · на разных концах карты</p>
         <label class="lbl">Как тебя зовут?</label>
         <input class="inp" id="name" maxlength="16" placeholder="Твоё имя" value="${esc(this.me.name)}" autocomplete="off">
         ${room ? `
@@ -748,6 +748,7 @@ const ISLAND_TOP = {
   train: ['#7a8a6a', '#2e3a28'],
   sanatorium: ['#e8d8e8', '#8a7a9a'],
   cape: ['#4a5a6a', '#1a2430'],
+  theatre: ['#8a2a30', '#3a0e12'],
   maze: ['#8a7aa8', '#3d3258'], cats: ['#ffcf9a', '#c9783a'], lights: ['#ffe9a8', '#5a6ad6'],
 };
 
@@ -989,6 +990,16 @@ const MINI = {
     for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const on = i === 1 && j === 0; g.fillStyle = on ? `rgba(220,170,90,${flick})` : '#1a1a20'; g.fillRect(-r * 0.32 + i * r * 0.24, -r * 0.54 + j * r * 0.24, r * 0.12, r * 0.14); }
     g.globalCompositeOperation = 'lighter'; Glow.draw(g, -r * 0.02, -r * 0.47, r * 0.35, '#ffb060', 0.35 * flick); g.globalCompositeOperation = 'source-over';
     for (let i = 0; i < 3; i++) { const k = (t * 0.15 + i / 3) % 1; g.fillStyle = `rgba(180,190,190,${0.18 * Math.sin(k * Math.PI)})`; g.beginPath(); g.ellipse(-r + k * r * 2, -r * 0.15 - i * r * 0.12, r * 0.5, r * 0.08, 0, 0, TAU); g.fill(); }
+  },
+  theatre(g, r, t) {
+    // бархатный занавес, светящийся экран и две тени, тянущиеся друг к другу
+    g.fillStyle = '#5a1418'; g.fillRect(-r * 0.75, -r * 1.1, r * 1.5, r * 0.14);
+    for (let i = 0; i < 5; i++) { g.fillStyle = i % 2 ? '#4a1014' : '#6a1a1e'; g.fillRect(-r * 0.75 + i * r * 0.06, -r * 1.0, r * 0.06, r * 0.95); g.fillRect(r * 0.75 - (i + 1) * r * 0.06, -r * 1.0, r * 0.06, r * 0.95); }
+    const gr = g.createRadialGradient(0, -r * 0.55, 0, 0, -r * 0.55, r * 0.6); gr.addColorStop(0, '#fff0d0'); gr.addColorStop(1, '#c89a60'); g.fillStyle = gr; g.fillRect(-r * 0.45, -r * 0.96, r * 0.9, r * 0.8);
+    const k = Math.sin(t * 0.8) * 0.5 + 0.5, s = r * 0.42, y = -r * 0.2;
+    const fig = (x, d, skirt) => { g.fillStyle = '#120c08'; g.beginPath(); g.arc(x, y - s * 0.9, s * 0.09, 0, TAU); g.fill(); if (skirt) { g.beginPath(); g.moveTo(x - s * 0.07, y - s * 0.75); g.lineTo(x + s * 0.07, y - s * 0.75); g.lineTo(x + s * 0.2, y - s * 0.1); g.lineTo(x - s * 0.2, y - s * 0.1); g.fill(); } else g.fillRect(x - s * 0.08, y - s * 0.78, s * 0.16, s * 0.68); g.strokeStyle = '#120c08'; g.lineWidth = s * 0.05; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y - s * 0.65); g.lineTo(x + d * s * 0.28, y - s * 0.55 - k * s * 0.1); g.stroke(); };
+    fig(-r * 0.24 + k * r * 0.06, 1, true); fig(r * 0.24 - k * r * 0.06, -1, false);
+    g.fillStyle = '#3a2418'; g.fillRect(-r * 0.6, -r * 0.16, r * 1.2, r * 0.1);
   },
   cape(g, r, t) {
     // чёрная скала, полосатый маяк, вращающийся луч и снег
