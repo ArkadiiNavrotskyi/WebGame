@@ -185,17 +185,18 @@ class Net {
     if (!this._flushT) this._flushT = setInterval(() => this._flush(), 100);
   }
   _flush() {
-    const R = this.rel; if (!R || !this.sig || !this.relayTo || this.direct) return;
+    const R = this.rel; if (!R || !this.sig || !this.relayTo) return;
+    if (this.direct && !R.out.length && !R.cur && R.exp - 1 === R.ackSent) return;
     const now = performance.now(), items = [];
     for (const o of R.out) { if (items.length >= 30) break; if (!o.sent || now - o.sent > 450) { items.push([o.s, o.d]); o.sent = now; } }
     const ack = R.exp - 1;
     if (!items.length && !R.cur && ack === R.ackSent && now - R.lastSend < 1000) return;
-    this.sig.pub(this.relayTo, { k: 'b', j: R.j, g: this.gid, a: ack, m: items, c: R.cur || undefined });
+    this.sig.pub(this.relayTo, { k: 'b', j: R.j, g: this.gid, a: ack, m: items, c: R.cur || undefined, nd: !this.direct });
     this.st.sr++; R.cur = null; R.ackSent = ack; R.lastSend = now;
   }
   _gotBatch(m) {
     const R = this.rel; if (!R || m.j !== R.j) { this.st.foreign = (this.st.foreign || 0) + 1; return; }
-    if (this.direct) this._closePc();
+    if (m.nd && this.direct) this._closePc();
     this.lastSeen = performance.now();
     if (typeof m.a === 'number') R.out = R.out.filter((o) => o.s > m.a);
     for (const [sq, d] of m.m || []) if (sq >= R.exp) R.buf.set(sq, d);
@@ -276,7 +277,7 @@ class Net {
     if (m.k === 'b') { this._gotBatch(m); return; }
     if (m.k === 'rack' || m.k === 'offer') {
       this.st.racks++;
-      if ((m.v || 0) !== CONFIG.version) this.emit('version', m.v || 0);
+      if (m.k === 'rack' && (m.v || 0) !== CONFIG.version) this.emit('version', m.v || 0);
       this.relayTo = this.topic('h');
       if (!this.connected) { this._retry = 0; this._setConnected(true); }
       this._onOpen && this._onOpen();

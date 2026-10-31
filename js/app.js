@@ -26,7 +26,8 @@ const App = {
     this.bindNet();
     this.bindHubInput();
     $('#rotate .skip').onclick = () => document.body.classList.add('rot-skip');
-    if (new URLSearchParams(location.search).get('diag')) this.showDiag(); else this.showStart();
+    const qp = new URLSearchParams(location.search);
+    if (qp.get('test')) this.showTest(); else if (qp.get('diag')) this.showDiag(); else this.showStart();
     this.checkVersion();
   },
 
@@ -249,6 +250,7 @@ const App = {
   onMsg(m) {
     if (!m || !m.t) return;
     switch (m.t) {
+      case 'tinfo': case 'tping': case 'tpong': case 'tres': if (this._test) this._test(m); break;
       case 'hello': {
         const first = !this.peer;
         this.peer = { name: (m.name || 'Гость').slice(0, 16), touch: !!m.touch };
@@ -313,7 +315,7 @@ const App = {
         <div class="err" id="err">${errText || ''}</div>
         <div class="hint">${local
           ? '🧪 Тестовый режим: открой вторую вкладку с этим же адресом и войди по коду.<br><a id="online">вернуться в обычный режим</a>'
-          : 'Проверить на одном компьютере: <a id="localtest">тест в двух вкладках</a><br><a href="?diag=1">проверка связи</a>'}</div>
+          : 'Проверить на одном компьютере: <a id="localtest">тест в двух вкладках</a><br><a href="?diag=1">проверка связи</a> · <a href="?test=1">тест связи вдвоём</a>'}</div>
       </div>`);
     this.setUI(el);
     const nameIn = $('#name', el);
@@ -371,6 +373,74 @@ const App = {
       try { f(await stun(u)); } catch (e) { f(false); }
     }
     box.appendChild(h(`<p class="hint">${okSig ? '✓ хотя бы один сервер связи доступен' : '✗ ни один сервер связи не доступен'}. Нужен ✓ хотя бы у одной «Связи» и одного STUN — тогда работает без VPN.</p>`));
+  },
+
+  // ---------- Тест связи вдвоём: обе стороны проверяют всё и показывают итог ----------
+  async showTest() {
+    this.screen = 'test';
+    const qp = new URLSearchParams(location.search), given = RoomCode.parse(qp.get('test') === '1' ? '' : qp.get('test'));
+    const host = !given, code = given || RoomCode.make();
+    const link = location.origin + location.pathname + '?test=' + encodeURIComponent(code.text) + '&u=' + CONFIG.version;
+    const ua = navigator.userAgent;
+    const inApp = /VKClient|vkontakte|Telegram|FBAN|FBAV|Instagram|OKApp/i.test(ua) ? (/VK/i.test(ua) ? 'ВКонтакте' : /Telegram/i.test(ua) ? 'Telegram' : 'приложения') : '';
+    const browser = inApp ? 'внутри ' + inApp + ' ⚠' : /CriOS|Chrome/.test(ua) ? 'Chrome' : /Firefox|FxiOS/.test(ua) ? 'Firefox' : /Safari/.test(ua) ? 'Safari' : 'браузер';
+    const ROWS = [['ver', 'Версия сайта'], ['br', 'Браузер'], ['srv', 'Серверы связи'], ['peer', 'Нашли друг друга'], ['msg', 'Сообщения дошли'], ['rtt', 'Задержка'], ['dir', 'Прямой канал']];
+    const el = h('<div class="panel" style="max-width:560px"><h2 style="margin:0 0 6px;text-align:center">Тест связи вдвоём</h2>' +
+      (host ? '<p class="hint" style="margin:0 0 8px">Отправь эту ссылку второму игроку (пусть откроет в Safari или Chrome, не внутри ВК):</p><input class="inp" id="tLink" readonly value="' + esc(link) + '" style="font-size:13px"><button class="btn small" id="tCopy" style="margin:8px auto 4px;display:block">📋 Скопировать ссылку</button>' : '<p class="hint" style="margin:0 0 8px">Подключаюсь к тесту…</p>') +
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:6px"><tr style="color:var(--muted)"><td></td><td style="text-align:center">Ты</td><td style="text-align:center">Партнёр</td></tr>' +
+      ROWS.map(([id, n]) => '<tr style="border-top:1px solid var(--line)"><td style="padding:8px 4px">' + n + '</td><td id="t_' + id + '_me" style="text-align:center">…</td><td id="t_' + id + '_peer" style="text-align:center">…</td></tr>').join('') +
+      '</table><div id="tVerdict" class="hint" style="font-size:14px;line-height:1.5;margin-top:12px;color:var(--ink)">Ждём второго игрока…</div><button class="btn ghost" id="tBack">← на сайт</button></div>');
+    this.setUI(el);
+    $('#tBack', el).onclick = () => { location.href = location.pathname; };
+    if (host) $('#tCopy', el).onclick = async () => { try { await navigator.clipboard.writeText(link); this.toast('Ссылка скопирована ✦'); } catch (e) { $('#tLink', el).select(); } };
+    const set = (id, side, ok, txt) => { const c = $('#t_' + id + '_' + side, el); if (!c) return; c.textContent = txt; c.style.color = ok === true ? '#7dffb5' : ok === false ? '#ff8a8a' : 'var(--ink)'; };
+    const me = { v: CONFIG.version, br: browser, inApp: !!inApp };
+    set('ver', 'me', null, String(me.v)); set('br', 'me', !inApp, browser);
+    const R = { peerInfo: null, sent: 0, got: 0, rtts: [], peerRes: null, myRes: null, srvOk: false };
+    const verdict = () => {
+      const v = [], P = R.peerInfo;
+      if (P && P.v !== me.v) v.push('❗ Разные версии (' + me.v + ' и ' + P.v + '). Тому, у кого меньше, — закрыть вкладку и открыть ссылку заново (Ctrl+F5 на компьютере).');
+      if (me.inApp || (P && P.inApp)) v.push('⚠ Сайт открыт внутри приложения (ВК/Telegram) — оно держит старые версии. Откройте в Safari или Chrome.');
+      if (!R.srvOk) v.push('❗ У тебя не доступен ни один сервер связи — нужен VPN или другая сеть.');
+      if (P && !P.srvOk) v.push('❗ У партнёра не доступен ни один сервер связи.');
+      if (R.myRes && R.peerRes) {
+        if (R.myRes.got < R.myRes.sent || R.peerRes.got < R.peerRes.sent) v.push('⚠ Часть тестовых сообщений не дошла за 12 секунд — связь очень нестабильная.');
+        if (!v.length) v.push('✓ Всё в порядке! Связь ' + (R.myRes.dir ? 'напрямую' : 'через сервер') + ', задержка ~' + R.myRes.rtt + ' мс. Можно играть.');
+      }
+      $('#tVerdict', el).innerHTML = v.join('<br>') || 'Проверяю…';
+    };
+    const brokersText = () => (this.net.sig ? this.net.sig.clients.map((c) => (c.ready ? '✓' : '✗') + c.url.split('//')[1].split('.')[1]).join(' ') : '—');
+    const checkSrv = () => { const ok = !!(this.net.sig && this.net.sig.ready); R.srvOk = ok; set('srv', 'me', ok, brokersText()); };
+    setTimeout(checkSrv, 5000); setInterval(checkSrv, 3000);
+    this._test = (m) => {
+      if (m.t === 'tinfo') { R.peerInfo = m; set('ver', 'peer', m.v === me.v, String(m.v)); set('br', 'peer', !m.inApp, m.br); set('srv', 'peer', m.srvOk, m.srv); verdict(); }
+      if (m.t === 'tping') this.net.send({ t: 'tpong', n: m.n, ts: m.ts });
+      if (m.t === 'tpong') { R.got++; R.rtts.push(performance.now() - m.ts); }
+      if (m.t === 'tres') { R.peerRes = m; set('msg', 'peer', m.got === m.sent, m.got + '/' + m.sent); set('rtt', 'peer', m.rtt < 800, m.rtt + ' мс'); set('dir', 'peer', null, m.dir ? 'да' : 'нет, через сервер'); verdict(); }
+    };
+    let started = false;
+    this.net.on('open', () => {
+      set('peer', 'me', true, '✓'); set('peer', 'peer', true, '✓');
+      if (started) return; started = true;
+      $('#tVerdict', el).textContent = 'Нашли друг друга! Гоняю тестовые сообщения ~12 секунд…';
+      const info = () => this.net.send({ t: 'tinfo', v: me.v, br: me.br, inApp: me.inApp, srvOk: !!(this.net.sig && this.net.sig.ready), srv: brokersText() });
+      info(); setTimeout(info, 3000);
+      let n = 0;
+      const iv = setInterval(() => { if (n >= 25) return clearInterval(iv); R.sent++; this.net.send({ t: 'tping', n: n++, ts: performance.now() }); }, 150);
+      setTimeout(() => {
+        const rtt = R.rtts.length ? Math.round(R.rtts.reduce((x, y) => x + y, 0) / R.rtts.length) : 0;
+        R.myRes = { sent: R.sent, got: R.got, rtt, dir: this.net.direct };
+        set('msg', 'me', R.got === R.sent, R.got + '/' + R.sent); set('rtt', 'me', rtt < 800, rtt + ' мс'); set('dir', 'me', null, this.net.direct ? 'да' : 'нет, через сервер');
+        this.net.send({ t: 'tres', sent: R.myRes.sent, got: R.myRes.got, rtt: R.myRes.rtt, dir: R.myRes.dir }); verdict();
+      }, 12000);
+    });
+    try {
+      if (host) { await this.net.host(code); $('#tVerdict', el).textContent = 'Тест открыт. Ждём второго игрока по ссылке…'; }
+      else await this.net.join(code);
+    } catch (e) {
+      set('peer', 'me', false, '✗');
+      $('#tVerdict', el).innerHTML = e.message === 'server' ? '❗ Не удалось подключиться ни к одному серверу связи. Попробуй VPN или другую сеть.' : e.message === 'notfound' ? '❗ Тест не найден. Проверь, что у первого игрока открыта эта же ссылка и страница не закрыта.' : '❗ Ошибка: ' + esc(e.message);
+    }
   },
 
   async createRoom(attempt = 0) {
