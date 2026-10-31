@@ -345,10 +345,12 @@ const App = {
     const row = (name) => { const r = h(`<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px"><span>${name}</span><b>…</b></div>`); box.appendChild(r); return (ok, txt) => { const b = $('b', r); b.textContent = txt || (ok ? '✓' : '✗'); b.style.color = ok ? '#7dffb5' : '#ff8a8a'; }; };
     const withT = (p, ms) => Promise.race([p, new Promise((_, rj) => setTimeout(() => rj(new Error('timeout')), ms))]);
     row('Сайт')(true);
-    const s1 = row('Сервер связи (peerjs.com)');
-    try { const r = await withT(fetch('https://0.peerjs.com/peerjs/id?ts=' + Date.now(), { cache: 'no-store' }), 7000); s1(r.ok); } catch (e) { s1(false, '✗ ' + (e.message === 'timeout' ? 'нет ответа' : 'блок')); }
-    const s2 = row('Вход на сервер связи');
-    try { await withT(new Promise((res, rej) => { const p = new Peer(undefined, { debug: 0 }); p.on('open', () => { res(); p.destroy(); }); p.on('error', (er) => rej(er)); }), 9000); s2(true); } catch (e) { s2(false); }
+    // серверы знакомства — проверяем все параллельно
+    const sigs = CONFIG.signalServers.map((u) => {
+      const f = row('Связь: ' + u.split('//')[1].split(/[:/]/)[0]);
+      return withT(new Promise((res) => { const c = new MqttWs(u, () => { res(); c.close(); }, () => {}); }), 8000).then(() => (f(true), 1), () => (f(false), 0));
+    });
+    const okSig = (await Promise.all(sigs)).reduce((x, y) => x + y, 0);
     const stun = async (url) => {
       const pc = new RTCPeerConnection({ iceServers: [{ urls: url }] });
       pc.createDataChannel('x');
@@ -363,7 +365,7 @@ const App = {
       const f = row(u.replace(/^(stun|turns?):/, '') + (u.startsWith('turn') ? ' (TURN)' : ''));
       try { f(await stun(u)); } catch (e) { f(false); }
     }
-    box.appendChild(h('<p class="hint">✓ у сервера связи и хотя бы у одного STUN — значит, должно работать без VPN.</p>'));
+    box.appendChild(h(`<p class="hint">${okSig ? '✓ хотя бы один сервер связи доступен' : '✗ ни один сервер связи не доступен'}. Нужен ✓ хотя бы у одной «Связи» и одного STUN — тогда работает без VPN.</p>`));
   },
 
   async createRoom(attempt = 0) {
