@@ -128,9 +128,10 @@ class Net {
     try {
       if (this.local) this.bc.postMessage({ from: this.isHost ? 'h' : 'g', data: obj });
       else if (this.dc && this.dc.readyState === 'open') { this.dc.send(JSON.stringify(obj)); this.st.sd++; }
-      else if (this.sig && this.relayTo) {
-        if (obj && obj.t === 'cur') { const now = performance.now(); if (now - (this._curT || 0) < 160) return; this._curT = now; }
-        this.sig.pub(this.relayTo, { k: 'd', d: obj, g: this.gid }); this.st.sr++;
+      else if (this.sig && this.relayTo && this.rel) {
+        const R = this.rel;
+        if (obj && obj.t === 'cur') R.cur = obj; // курсор — только последний, без гарантии
+        else { R.out.push({ s: ++R.seq, d: obj, sent: 0 }); if (R.out.length > 400) R.out.shift(); }
       }
     } catch (e) { console.warn('send failed', e); }
   }
@@ -178,10 +179,34 @@ class Net {
     dc.onclose = () => { if (this.dc === dc) this.dc = null; };
   }
 
+  // ---------- Надёжная доставка через сервер ----------
+  _newRel(j) {
+    this.rel = { j, seq: 0, out: [], exp: 1, buf: new Map(), cur: null, ackSent: -1, lastSend: 0 };
+    if (!this._flushT) this._flushT = setInterval(() => this._flush(), 100);
+  }
+  _flush() {
+    const R = this.rel; if (!R || !this.sig || !this.relayTo || this.direct) return;
+    const now = performance.now(), items = [];
+    for (const o of R.out) { if (items.length >= 30) break; if (!o.sent || now - o.sent > 450) { items.push([o.s, o.d]); o.sent = now; } }
+    const ack = R.exp - 1;
+    if (!items.length && !R.cur && ack === R.ackSent && now - R.lastSend < 1000) return;
+    this.sig.pub(this.relayTo, { k: 'b', j: R.j, g: this.gid, a: ack, m: items, c: R.cur || undefined });
+    this.st.sr++; R.cur = null; R.ackSent = ack; R.lastSend = now;
+  }
+  _gotBatch(m) {
+    const R = this.rel; if (!R || m.j !== R.j) { this.st.foreign = (this.st.foreign || 0) + 1; return; }
+    if (this.direct) this._closePc();
+    this.lastSeen = performance.now();
+    if (typeof m.a === 'number') R.out = R.out.filter((o) => o.s > m.a);
+    for (const [sq, d] of m.m || []) if (sq >= R.exp) R.buf.set(sq, d);
+    while (R.buf.has(R.exp)) { const d = R.buf.get(R.exp); R.buf.delete(R.exp); R.exp++; this.st.rr++; this._gotData(d); }
+    if (m.c) this._gotData(m.c);
+  }
+
   debugInfo() {
     const ago = this.st.last ? Math.round((performance.now() - this.st.last) / 1000) + ' с назад' : '—';
     const br = this.sig ? this.sig.clients.map((c) => `${c.url.split('//')[1].split('.')[1]} ${c.ready ? '✓' : '✗'}${c.drops ? ' обрывов ' + c.drops : ''}`).join(' · ') : 'нет';
-    return [`роль: ${this.isHost ? 'хост' : 'гость'} · связь: ${this.connected ? 'есть' : 'нет'} · ${this.direct ? 'напрямую' : 'через сервер'}`, `серверы: ${br}`, `отправлено: напрямую ${this.st.sd}, через сервер ${this.st.sr}`, `получено: напрямую ${this.st.rd}, через сервер ${this.st.rr}${this.st.foreign ? ', чужих ' + this.st.foreign : ''}`, `последнее сообщение: ${ago} · привет ${this.st.hellos} · ответов ${this.st.racks}`, `пинг: ${this.rtt} мс · версия ${CONFIG.version}`].join('\n');
+    return [`роль: ${this.isHost ? 'хост' : 'гость'} · связь: ${this.connected ? 'есть' : 'нет'} · ${this.direct ? 'напрямую' : 'через сервер'}`, `серверы: ${br}`, `отправлено: напрямую ${this.st.sd}, пачек через сервер ${this.st.sr}`, `получено: напрямую ${this.st.rd}, через сервер ${this.st.rr}${this.st.foreign ? ', чужих ' + this.st.foreign : ''}`, `последнее сообщение: ${ago} · привет ${this.st.hellos} · ответов ${this.st.racks}`, `пинг: ${this.rtt} мс · ждут подтверждения: ${this.rel ? this.rel.out.length : 0} · версия ${CONFIG.version}`].join('\n');
   }
 
   // ---------- Хост ----------
@@ -195,7 +220,7 @@ class Net {
     this.emit('status', 'Комната открыта');
   }
   async _hostSig(m) {
-    if (m.k === 'd') { if (m.g !== this.gid) { this.st.foreign = (this.st.foreign || 0) + 1; return; } this.st.rr++; if (this.direct) this._closePc(); this._gotData(m.d); return; }
+    if (m.k === 'b') { if (m.g === this.gid) this._gotBatch(m); return; }
     if (m.k === 'hello') {
       this.st.hellos++;
       this.relayTo = this.topic('g/' + m.gid);
@@ -203,7 +228,7 @@ class Net {
       // повтор того же «привет» — просто шлём уже готовое предложение ещё раз
       if (m.j && m.j === this.joinId) { if (this.lastOffer) this.sig.pub(this.topic('g/' + m.gid), this.lastOffer); return; }
       // гость (новый или вернувшийся) — заводим свежее соединение
-      this.joinId = m.j; this.lastOffer = null;
+      this.joinId = m.j; this.lastOffer = null; this._newRel(m.j);
       this.gid = m.gid; this._retry = 0;
       this._setConnected(true);
       this.lastSeen = performance.now();
@@ -230,7 +255,7 @@ class Net {
       this.emit('status', 'Ищу комнату…');
       if (!this.gid) this.gid = Math.random().toString(36).slice(2, 10);
       let offered = false, done = false, hello = null;
-      const joinId = Math.random().toString(36).slice(2, 10); this._joinId = joinId;
+      const joinId = Math.random().toString(36).slice(2, 10); this._joinId = joinId; this._newRel(joinId);
       const fail = (e) => { if (!done) { done = true; clearInterval(hello); reject(new Error(e)); } };
       if (!this.sig) {
         this.sig = new Signal((t, m) => this._guestSig(m));
@@ -247,7 +272,7 @@ class Net {
     });
   }
   async _guestSig(m) {
-    if (m.k === 'd') { this.st.rr++; if (this.direct) this._closePc(); this._gotData(m.d); return; }
+    if (m.k === 'b') { this._gotBatch(m); return; }
     if (m.k === 'rack' || m.k === 'offer') {
       this.st.racks++;
       this.relayTo = this.topic('h');
