@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function h(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
 window.GAMES = window.GAMES || {};
-const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz'];
+const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights'];
 
 const App = {
   net: new Net(),
@@ -70,16 +70,21 @@ const App = {
     if (w > hh * 1.15) {
       const r = Math.max(Math.min(w / 10, hh / 9.5), Math.min(w / 14, 55));
       titleY = Math.max(hh * 0.13, 64);
-      const y1 = titleY + r * 1.35 + 50, y2 = y1 + r * 3.75;
+      const y1 = titleY + r * 1.35 + 50, rows = Math.ceil(HUB_ORDER.length / 4);
       const xs = [0.14, 0.38, 0.62, 0.86];
-      HUB_ORDER.forEach((id, i) => L.push({ id, x: w * xs[i % 4], y: (i < 4 ? y1 : y2) + (i % 2 ? -0.2 : 0.2) * r, r }));
-      contentH = y2 + r * 2.4;
+      HUB_ORDER.forEach((id, i) => {
+        const row = Math.floor(i / 4), inRow = Math.min(4, HUB_ORDER.length - row * 4);
+        // неполный последний ряд — по центру
+        const x = inRow === 4 ? xs[i % 4] : 0.5 + ((i % 4) - (inRow - 1) / 2) * 0.24;
+        L.push({ id, x: w * x, y: y1 + row * r * 3.75 + (i % 2 ? -0.2 : 0.2) * r, r });
+      });
+      contentH = y1 + (rows - 1) * r * 3.75 + r * 2.4;
     } else {
       const r = Math.min(w / 5.4, hh / 11.5, 82);
       titleY = Math.max(hh * 0.11, 84);
       const y1 = titleY + r * 1.35 + 56;
       HUB_ORDER.forEach((id, i) => L.push({ id, x: w * (i % 2 ? 0.73 : 0.27), y: y1 + Math.floor(i / 2) * r * 3.7 + (i % 2 ? r * 0.35 : 0), r }));
-      contentH = y1 + 3 * r * 3.7 + r * 0.35 + r * 2.4;
+      contentH = y1 + (Math.ceil(HUB_ORDER.length / 2) - 1) * r * 3.7 + r * 0.35 + r * 2.4;
     }
     return { L, titleY, contentH };
   },
@@ -290,7 +295,7 @@ const App = {
     const el = h(`
       <div class="panel">
         <h1 class="title">${esc(CONFIG.siteTitle)}</h1>
-        <p class="subtitle">восемь игр для двоих · на разных концах карты</p>
+        <p class="subtitle">одиннадцать игр для двоих · на разных концах карты</p>
         <label class="lbl">Как тебя зовут?</label>
         <input class="inp" id="name" maxlength="16" placeholder="Твоё имя" value="${esc(this.me.name)}" autocomplete="off">
         ${room ? `
@@ -616,6 +621,7 @@ const ISLAND_ROCK = [[-1, 0], [-0.88, 0.22], [-0.7, 0.42], [-0.55, 0.62], [-0.32
 const ISLAND_TOP = {
   constellation: ['#a58bff', '#5a3fb0'], lighthouse: ['#f1d9a4', '#c49a5c'], keys: ['#6cc9b4', '#2f7f78'], garden: ['#86e39a', '#3b9a5e'], cards: ['#f3c76b', '#b0782c'],
   bomb: ['#f2a07a', '#a3453a'], starfall: ['#9fb8ff', '#4a5cc0'], usquiz: ['#ffb3d1', '#c0507e'],
+  maze: ['#8a7aa8', '#3d3258'], cats: ['#ffcf9a', '#c9783a'], lights: ['#ffe9a8', '#5a6ad6'],
 };
 
 function drawIsland(g, x, y, r, t, id, hover, color) {
@@ -792,6 +798,48 @@ const MINI = {
       Glow.draw(g, x, y, r * 0.22, col, 0.9);
     }
     g.globalCompositeOperation = 'source-over';
+  },
+  maze(g, r, t) {
+    // каменные стенки лабиринта и огонёк
+    g.fillStyle = '#4a3f66';
+    const W = [[-0.7, -0.5, 0.15, 0.5], [-0.7, -0.5, 0.9, 0.12], [0.45, -0.5, 0.15, 0.55], [-0.25, -0.2, 0.15, 0.3], [-0.25, -0.2, 0.5, 0.12]];
+    for (const [x, y, w, h] of W) { g.fillRect(x * r, y * r - r * 0.25, w * r, h * r); g.fillStyle = '#5c4f80'; g.fillRect(x * r, y * r - r * 0.25, w * r, r * 0.04); g.fillStyle = '#4a3f66'; }
+    const fx = Math.cos(t * 0.8) * r * 0.25, fy = -r * 0.62 + Math.sin(t * 1.6) * r * 0.08;
+    g.globalCompositeOperation = 'lighter'; Glow.draw(g, fx, fy, r * 0.6, '#ffc46b', 0.9); g.globalCompositeOperation = 'source-over';
+    g.fillStyle = '#fff1d6'; g.beginPath(); g.arc(fx, fy, r * 0.06, 0, TAU); g.fill();
+    g.globalAlpha = 0.5 + Math.sin(t * 2) * 0.2; g.fillStyle = '#e6dcff';
+    const gx = r * 0.55, gy = -r * 1.05 + Math.sin(t * 2.5) * r * 0.05;
+    g.beginPath(); g.arc(gx, gy, r * 0.13, Math.PI, 0); g.lineTo(gx + r * 0.13, gy + r * 0.15); g.lineTo(gx - r * 0.13, gy + r * 0.15); g.fill(); g.globalAlpha = 1;
+  },
+  cats(g, r, t) {
+    // две карты и кошачьи ушки
+    const card = (ang, ox, col) => {
+      g.save(); g.translate(ox * r, -r * 0.5); g.rotate(ang + Math.sin(t * 1.3 + ox * 4) * 0.04);
+      const w = r * 0.45, hh = r * 0.64;
+      g.fillStyle = col; roundRect(g, -w / 2, -hh / 2, w, hh, r * 0.06); g.fill();
+      g.strokeStyle = '#fff3c4'; g.lineWidth = 2; roundRect(g, -w / 2 + 3, -hh / 2 + 3, w - 6, hh - 6, r * 0.05); g.stroke();
+      g.fillStyle = '#f4c99d'; g.beginPath(); g.arc(0, hh * 0.05, w * 0.28, 0, TAU); g.fill();
+      for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(sx * w * 0.26, -hh * 0.02); g.lineTo(sx * w * 0.2, -hh * 0.22); g.lineTo(sx * w * 0.06, -hh * 0.12); g.fill(); }
+      g.fillStyle = '#2a1a30'; g.beginPath(); g.arc(-w * 0.1, hh * 0.04, w * 0.04, 0, TAU); g.arc(w * 0.1, hh * 0.04, w * 0.04, 0, TAU); g.fill();
+      g.restore();
+    };
+    card(-0.3, -0.22, '#8a6fcb'); card(0.25, 0.22, '#e8a15a');
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 3; i++) { const k = (t * 0.5 + i / 3) % 1; Glow.draw(g, Math.sin(i * 2.3) * r * 0.5, -r * 0.7 - k * r * 0.7, r * 0.07, '#ffd27a', Math.sin(k * Math.PI)); }
+    g.globalCompositeOperation = 'source-over';
+  },
+  lights(g, r, t) {
+    // солнце и луна, луч между ними
+    const a = Math.sin(t * 0.7) * 0.1;
+    const sx = -r * 0.45, mx = r * 0.45, y = -r * 0.75;
+    g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = 'rgba(255,240,200,0.7)'; g.lineWidth = r * 0.05;
+    g.beginPath(); g.moveTo(sx, y); g.lineTo(0, y + r * 0.35 + a * r); g.lineTo(mx, y); g.stroke();
+    Glow.draw(g, sx, y, r * 0.55, '#ffcf6b', 0.9); Glow.draw(g, mx, y, r * 0.5, '#9fc4ff', 0.9);
+    g.globalCompositeOperation = 'source-over';
+    g.fillStyle = '#ffd36b'; g.beginPath(); g.arc(sx, y, r * 0.17, 0, TAU); g.fill();
+    g.fillStyle = '#e6ecff'; g.beginPath(); g.arc(mx, y, r * 0.16, Math.PI * 0.3, Math.PI * 1.7); g.arc(mx + r * 0.08, y, r * 0.13, Math.PI * 1.55, Math.PI * 0.45, true); g.fill();
+    g.save(); g.translate(0, y + r * 0.35 + a * r); g.rotate(Math.PI / 4); g.fillStyle = '#f4f8ff'; g.fillRect(-r * 0.03, -r * 0.14, r * 0.06, r * 0.28); g.restore();
   },
 };
 
