@@ -127,7 +127,10 @@ class Net {
     try {
       if (this.local) this.bc.postMessage({ from: this.isHost ? 'h' : 'g', data: obj });
       else if (this.dc && this.dc.readyState === 'open') this.dc.send(JSON.stringify(obj));
-      else if (this.sig && this.relayTo) this.sig.pub(this.relayTo, { k: 'd', d: obj, g: this.gid });
+      else if (this.sig && this.relayTo) {
+        if (obj && obj.t === 'cur') { const now = performance.now(); if (now - (this._curT || 0) < 160) return; this._curT = now; }
+        this.sig.pub(this.relayTo, { k: 'd', d: obj, g: this.gid });
+      }
     } catch (e) { console.warn('send failed', e); }
   }
 
@@ -140,14 +143,18 @@ class Net {
   _setConnected(v) {
     if (this.connected === v) return;
     this.connected = v;
-    this.emit(v ? 'open' : 'close');
+    if (v) {
+      if (this._closeT) { clearTimeout(this._closeT); this._closeT = null; } // вернулись быстро — никто и не заметил
+      else this.emit('open');
+    } else if (this.local) this.emit('close');
+    else { clearTimeout(this._closeT); this._closeT = setTimeout(() => { this._closeT = null; if (!this.connected) this.emit('close'); }, 4000); }
     clearInterval(this._pingT);
     if (v) {
       this.lastSeen = performance.now();
       this._pingT = setInterval(() => {
         this.send({ t: '_ping', ts: performance.now() });
         // обрыв не всегда заметен (телефон уснул), поэтому следим по тишине
-        if (performance.now() - this.lastSeen > (this.local ? 7000 : 10000)) {
+        if (performance.now() - this.lastSeen > (this.local ? 7000 : this.direct ? 10000 : 16000)) {
           if (this.local) this._setConnected(false);
           else { this._closePc(); this._lost(); }
         }
@@ -180,7 +187,7 @@ class Net {
     this.emit('status', 'Комната открыта');
   }
   async _hostSig(m) {
-    if (m.k === 'd') { if (m.g === this.gid) this._gotData(m.d); return; }
+    if (m.k === 'd') { if (m.g !== this.gid) return; if (this.direct) this._closePc(); this._gotData(m.d); return; }
     if (m.k === 'hello') {
       this.relayTo = this.topic('g/' + m.gid);
       this.sig.pub(this.relayTo, { k: 'rack' });
@@ -189,8 +196,8 @@ class Net {
       // гость (новый или вернувшийся) — заводим свежее соединение
       this.joinId = m.j; this.lastOffer = null;
       this.gid = m.gid; this._retry = 0;
-      if (this.connected) this._setConnected(false);
       this._setConnected(true);
+      this.lastSeen = performance.now();
       const sid = Math.random().toString(36).slice(2);
       this.sid = sid; this.gid = m.gid;
       const pc = this._newPc();
@@ -231,7 +238,7 @@ class Net {
     });
   }
   async _guestSig(m) {
-    if (m.k === 'd') { this._gotData(m.d); return; }
+    if (m.k === 'd') { if (this.direct) this._closePc(); this._gotData(m.d); return; }
     if (m.k === 'rack' || m.k === 'offer') {
       this.relayTo = this.topic('h');
       if (!this.connected) { this._retry = 0; this._setConnected(true); }
