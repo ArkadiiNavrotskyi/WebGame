@@ -328,8 +328,8 @@ window.StoryEngine = (() => {
         if (D.need && !S.f[D.need]) return { t: D.name, html: `<p class="hs-txt">${D.broken[this.role]}</p>${D.install && D.install.role === this.role && this.has(D.install.item) ? `<button class="hs-btn" id="hsCrank">${D.install.label}</button>` : ''}`, bind: (el) => { const b = $('#hsCrank', el); if (b) b.onclick = () => this.act(D.install.act); } };
         const inv = S.inv[this.role];
         const html = `<p class="hs-txt">${D.cabin}: ${here ? '<b>у тебя</b>' : 'у другого'}. ${here ? 'Положи предметы и отправь.' : 'Можно вызвать к себе.'}</p>
-          ${here ? `<div class="hs-dwbox">${S.dw.items.length ? S.dw.items.map((it) => `<button class="hs-take" data-dwt="${it}"><img src="${this.icon(it)}" alt="">Забрать: ${esc(ITEMS[it].n)}</button>`).join('') : '<span class="hs-cap">в кабине пусто</span>'}</div>
-            ${inv.length ? `<p class="hs-cap">Положить в кабину:</p><div class="hs-dwbox">${inv.map((it) => `<button class="hs-take" data-dwp="${it}"><img src="${this.icon(it)}" alt="">${esc(ITEMS[it].n)}</button>`).join('')}</div>` : ''}
+          ${here ? `<div class="hs-dwbox">${S.dw.items.length ? S.dw.items.map((it) => `<button class="hs-take" data-dwt="${it}"><img src="${this.icon(it)}" alt="">Забрать: ${esc(ITEMS[it].n)}</button>`).join('') : `<span class="hs-cap">${D.empty || 'в кабине пусто'}</span>`}</div>
+            ${inv.length ? `<p class="hs-cap">${D.putIn || 'Положить в кабину:'}</p><div class="hs-dwbox">${inv.map((it) => `<button class="hs-take" data-dwp="${it}"><img src="${this.icon(it)}" alt="">${esc(ITEMS[it].n)}</button>`).join('')}</div>` : ''}
             <button class="hs-btn" id="hsSend">Отправить ${D.send[this.role]}</button>` : `<button class="hs-btn" id="hsCall">${D.call}</button>`}`;
         return { t: D.name, html, bind: (el) => {
           el.querySelectorAll('[data-dwt]').forEach((b) => (b.onclick = () => this.act('dw_take', b.dataset.dwt)));

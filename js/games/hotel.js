@@ -672,7 +672,7 @@
     chapters: CH, ITEMS, DOCS, IMG, ACT, HINTS, TAKE, chapterOf, drawIcon,
     ROOM_NAME, AREA, OPEN, INTRO, OUTRO, ROOMS, art: ART, hot,
     dw: {
-      name: 'Пневмопочта', cabin: 'Капсула', called: 'Капсула со свистом прилетела к вам.', call: 'Вызвать капсулу', send: { up: 'вниз ↓', down: 'наверх ↑' },
+      name: 'Пневмопочта', cabin: 'Капсула', empty: 'капсула пуста', putIn: 'Положить в капсулу:', called: 'Капсула со свистом прилетела к вам.', call: 'Вызвать капсулу', send: { up: 'вниз ↓', down: 'наверх ↑' },
       room: { up: 'corridor', down: 'lobby' }, need: 'pressure',
       broken: { up: 'Латунный раструб пневмопочты. Капсула на месте, но давления нет — компрессор внизу, в генераторной, не работает.', down: 'Терминал пневмопочты у стойки. Мёртвый: компрессор в генераторной не запущен.' },
     },

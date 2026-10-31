@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function h(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
 window.GAMES = window.GAMES || {};
-const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands', 'house', 'hotel'];
+const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands', 'house', 'hotel', 'train'];
 
 const App = {
   net: new Net(),
@@ -302,7 +302,7 @@ const App = {
     const el = h(`
       <div class="panel">
         <h1 class="title">${esc(CONFIG.siteTitle)}</h1>
-        <p class="subtitle">четырнадцать игр для двоих · на разных концах карты</p>
+        <p class="subtitle">пятнадцать игр для двоих · на разных концах карты</p>
         <label class="lbl">Как тебя зовут?</label>
         <input class="inp" id="name" maxlength="16" placeholder="Твоё имя" value="${esc(this.me.name)}" autocomplete="off">
         ${room ? `
@@ -745,6 +745,7 @@ const ISLAND_TOP = {
   islands: ['#9fe7c4', '#3f9a7a'],
   house: ['#5a5048', '#1e1a16'],
   hotel: ['#dfe8f0', '#7a8ea4'],
+  train: ['#7a8a6a', '#2e3a28'],
   maze: ['#8a7aa8', '#3d3258'], cats: ['#ffcf9a', '#c9783a'], lights: ['#ffe9a8', '#5a6ad6'],
 };
 
@@ -986,6 +987,17 @@ const MINI = {
     for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const on = i === 1 && j === 0; g.fillStyle = on ? `rgba(220,170,90,${flick})` : '#1a1a20'; g.fillRect(-r * 0.32 + i * r * 0.24, -r * 0.54 + j * r * 0.24, r * 0.12, r * 0.14); }
     g.globalCompositeOperation = 'lighter'; Glow.draw(g, -r * 0.02, -r * 0.47, r * 0.35, '#ffb060', 0.35 * flick); g.globalCompositeOperation = 'source-over';
     for (let i = 0; i < 3; i++) { const k = (t * 0.15 + i / 3) % 1; g.fillStyle = `rgba(180,190,190,${0.18 * Math.sin(k * Math.PI)})`; g.beginPath(); g.ellipse(-r + k * r * 2, -r * 0.15 - i * r * 0.12, r * 0.5, r * 0.08, 0, 0, TAU); g.fill(); }
+  },
+  train(g, r, t) {
+    // паровоз выезжает из тоннеля, фара режет темноту
+    g.fillStyle = '#20201c'; g.beginPath(); g.moveTo(-r * 0.85, -r * 0.05); g.lineTo(-r * 0.85, -r * 0.7); g.quadraticCurveTo(-r * 0.3, -r * 1.25, r * 0.25, -r * 0.7); g.lineTo(r * 0.25, -r * 0.05); g.fill();
+    g.fillStyle = '#050505'; g.beginPath(); g.moveTo(-r * 0.72, -r * 0.05); g.lineTo(-r * 0.72, -r * 0.62); g.quadraticCurveTo(-r * 0.3, -r * 1.05, r * 0.12, -r * 0.62); g.lineTo(r * 0.12, -r * 0.05); g.fill();
+    const x0 = -r * 0.3 + Math.sin(t * 0.6) * r * 0.04;
+    g.fillStyle = '#121612'; g.fillRect(x0, -r * 0.42, r * 0.55, r * 0.26); g.beginPath(); g.arc(x0 + r * 0.55, -r * 0.29, r * 0.13, -Math.PI / 2, Math.PI / 2); g.fill(); g.fillRect(x0 - r * 0.05, -r * 0.62, r * 0.22, r * 0.22); g.fillRect(x0 + r * 0.4, -r * 0.56, r * 0.06, r * 0.14);
+    g.fillStyle = '#0a0a0a'; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(x0 + r * (0.08 + i * 0.18), -r * 0.12, r * 0.07, 0, TAU); g.fill(); }
+    g.fillStyle = '#d8b070'; g.fillRect(x0, -r * 0.56, r * 0.1, r * 0.08);
+    g.globalCompositeOperation = 'lighter'; Glow.draw(g, x0 + r * 0.66, -r * 0.3, r * 0.5, '#ffe0a0', 0.8 + Math.sin(t * 3) * 0.1); g.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 4; i++) { const k = (t * 0.4 + i / 4) % 1; g.fillStyle = `rgba(220,220,220,${0.35 * (1 - k)})`; g.beginPath(); g.arc(x0 + r * 0.43 - k * r * 0.3, -r * 0.6 - k * r * 0.5, r * (0.06 + k * 0.12), 0, TAU); g.fill(); }
   },
   hotel(g, r, t) {
     // заснеженный отель под горой, купол обсерватории и Полярная звезда над ним
