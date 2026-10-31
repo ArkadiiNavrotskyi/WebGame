@@ -239,6 +239,11 @@ const App = {
     net.on('status', (s) => { const el = $('#status'); if (el) el.textContent = s; this.updateBar(s); });
     net.on('rtt', () => this.updateBar());
     net.on('msg', (m) => this.onMsg(m));
+    net.on('version', (v) => {
+      if (this._verWarned === v) return; this._verWarned = v;
+      const mine = CONFIG.version, old = v < mine;
+      this.modal({ title: 'Разные версии сайта', text: `У тебя версия <b>${mine}</b>, у второго игрока — <b>${v || 'старая'}</b>. Так соединение не заработает.<br><br>${old ? 'Второму игроку' : 'Тебе'} нужно обновить страницу. Лучше открыть сайт в Safari или Chrome (не внутри ВКонтакте/Telegram) по ссылке:<br><b>arkadiinavrotskyi.github.io/WebGame/?u=${Math.max(mine, v)}</b>`, buttons: [{ label: old ? 'Понятно' : 'Обновить сейчас', onClick: () => { if (!old) location.href = location.pathname + '?u=' + v + '&t=' + Date.now(); } }] });
+    });
   },
 
   onMsg(m) {

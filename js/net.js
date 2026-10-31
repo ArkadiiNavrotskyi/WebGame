@@ -155,7 +155,7 @@ class Net {
       this.lastSeen = performance.now();
       this._pingT = setInterval(() => {
         this.send({ t: '_ping', ts: performance.now() });
-        if (!this.local && !this.isHost && this.sig && performance.now() - this.lastSeen > 5000) { this.sig.pub(this.topic('h'), { k: 'hello', gid: this.gid, j: this._joinId }); }
+        if (!this.local && !this.isHost && this.sig && performance.now() - this.lastSeen > 5000) { this.sig.pub(this.topic('h'), { k: 'hello', gid: this.gid, j: this._joinId, v: CONFIG.version }); }
         // обрыв не всегда заметен (телефон уснул), поэтому следим по тишине
         if (performance.now() - this.lastSeen > (this.local ? 7000 : this.direct ? 10000 : 16000)) {
           if (this.local) this._setConnected(false);
@@ -223,8 +223,9 @@ class Net {
     if (m.k === 'b') { if (m.g === this.gid) this._gotBatch(m); return; }
     if (m.k === 'hello') {
       this.st.hellos++;
+      if ((m.v || 0) !== CONFIG.version) this.emit('version', m.v || 0);
       this.relayTo = this.topic('g/' + m.gid);
-      this.sig.pub(this.relayTo, { k: 'rack' });
+      this.sig.pub(this.relayTo, { k: 'rack', v: CONFIG.version });
       // повтор того же «привет» — просто шлём уже готовое предложение ещё раз
       if (m.j && m.j === this.joinId) { if (this.lastOffer) this.sig.pub(this.topic('g/' + m.gid), this.lastOffer); return; }
       // гость (новый или вернувшийся) — заводим свежее соединение
@@ -265,7 +266,7 @@ class Net {
       this.relayTo = null;
       this._onOpen = () => { if (!done) { done = true; clearInterval(hello); resolve(); } };
       try { await this.sig.whenReady(12000); } catch (e) { return fail('server'); }
-      const say = () => { if (!offered && !this.connected && !done) this.sig.pub(this.topic('h'), { k: 'hello', gid: this.gid, j: joinId }); };
+      const say = () => { if (!offered && !this.connected && !done) this.sig.pub(this.topic('h'), { k: 'hello', gid: this.gid, j: joinId, v: CONFIG.version }); };
       say();
       hello = setInterval(say, 2000);
       setTimeout(() => { if (!this.connected) fail('notfound'); }, 12000);
@@ -275,6 +276,7 @@ class Net {
     if (m.k === 'b') { this._gotBatch(m); return; }
     if (m.k === 'rack' || m.k === 'offer') {
       this.st.racks++;
+      if ((m.v || 0) !== CONFIG.version) this.emit('version', m.v || 0);
       this.relayTo = this.topic('h');
       if (!this.connected) { this._retry = 0; this._setConnected(true); }
       this._onOpen && this._onOpen();
