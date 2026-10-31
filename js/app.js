@@ -433,6 +433,15 @@ const App = {
       <div><button class="iconbtn" id="inst" title="Установить как приложение" style="display:none">📲</button><button class="iconbtn" id="snd" title="Звук"></button><button class="iconbtn" id="fs" title="На весь экран">⛶</button></div>
     </div>`);
     document.body.appendChild(bar);
+    // нажатие на плашку связи — окно отладки (для скриншота)
+    $('#conn', bar).onclick = () => {
+      const old = $('#netdbg'); if (old) { old.remove(); clearInterval(this._dbgT); return; }
+      const box = h('<pre id="netdbg" style="position:fixed;left:10px;right:10px;top:70px;z-index:40;margin:0;padding:12px;border-radius:14px;background:rgba(5,5,20,.92);border:1px solid var(--line);color:#cfe;font:12px/1.5 monospace;white-space:pre-wrap"></pre>');
+      document.body.appendChild(box);
+      const upd = () => { box.textContent = this.net.debugInfo() + '\n(нажми на плашку ещё раз, чтобы закрыть)'; };
+      upd(); this._dbgT = setInterval(upd, 1000);
+    };
+    $('#conn', bar).style.cursor = 'pointer';
     const snd = $('#snd', bar);
     const setSnd = () => { snd.textContent = SFX.muted ? '🔇' : '🔊'; };
     setSnd();

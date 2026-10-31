@@ -45,7 +45,7 @@ class MqttWs {
     ws.onmessage = (e) => { const d = new Uint8Array(e.data); const b = new Uint8Array(this.buf.length + d.length); b.set(this.buf); b.set(d, this.buf.length); this.buf = b; this.parse(); };
     ws.onclose = ws.onerror = () => { if (this.ws !== ws) return; this.ws = null; this.ready = false; clearInterval(this.pingT); this.retry(); };
   }
-  retry() { if (this.closed) return; this.wait = Math.min(30000, (this.wait || 1500) * 2); setTimeout(() => this.connect(), this.wait); }
+  retry() { if (this.closed) return; this.drops = (this.drops || 0) + 1; this.wait = Math.min(5000, (this.wait || 500) * 1.6); setTimeout(() => this.connect(), this.wait); }
   static str(s) { const b = new TextEncoder().encode(s); return [b.length >> 8, b.length & 255, ...b]; }
   static packet(type, body) {
     const len = []; let n = body.length;
@@ -116,6 +116,7 @@ class Net {
     this.sig = null; this.pc = null; this.dc = null; this.bc = null;
     this.code = null; this.rtt = 0; this.lastSeen = 0;
     this._retry = 0;
+    this.st = { sd: 0, sr: 0, rd: 0, rr: 0, last: 0, hellos: 0, racks: 0 };
   }
   on(ev, fn) { (this.handlers[ev] ||= []).push(fn); }
   emit(ev, ...a) { (this.handlers[ev] || []).forEach((f) => f(...a)); }
@@ -126,16 +127,16 @@ class Net {
     if (!this.connected) return;
     try {
       if (this.local) this.bc.postMessage({ from: this.isHost ? 'h' : 'g', data: obj });
-      else if (this.dc && this.dc.readyState === 'open') this.dc.send(JSON.stringify(obj));
+      else if (this.dc && this.dc.readyState === 'open') { this.dc.send(JSON.stringify(obj)); this.st.sd++; }
       else if (this.sig && this.relayTo) {
         if (obj && obj.t === 'cur') { const now = performance.now(); if (now - (this._curT || 0) < 160) return; this._curT = now; }
-        this.sig.pub(this.relayTo, { k: 'd', d: obj, g: this.gid });
+        this.sig.pub(this.relayTo, { k: 'd', d: obj, g: this.gid }); this.st.sr++;
       }
     } catch (e) { console.warn('send failed', e); }
   }
 
   _gotData(data) {
-    this.lastSeen = performance.now();
+    this.lastSeen = this.st.last = performance.now();
     if (data && data.t === '_ping') { this.send({ t: '_pong', ts: data.ts }); return; }
     if (data && data.t === '_pong') { this.rtt = Math.round(performance.now() - data.ts); this.emit('rtt', this.rtt); return; }
     this.emit('msg', data);
@@ -153,10 +154,11 @@ class Net {
       this.lastSeen = performance.now();
       this._pingT = setInterval(() => {
         this.send({ t: '_ping', ts: performance.now() });
+        if (!this.local && !this.isHost && this.sig && performance.now() - this.lastSeen > 5000) { this.sig.pub(this.topic('h'), { k: 'hello', gid: this.gid, j: this._joinId }); }
         // обрыв не всегда заметен (телефон уснул), поэтому следим по тишине
         if (performance.now() - this.lastSeen > (this.local ? 7000 : this.direct ? 10000 : 16000)) {
           if (this.local) this._setConnected(false);
-          else { this._closePc(); this._lost(); }
+          else { this._closePc(); this._lost(); if (this.isHost) this.lastSeen = performance.now(); }
         }
       }, 2000);
     }
@@ -172,8 +174,14 @@ class Net {
   _bindDc(dc) {
     this.dc = dc;
     dc.onopen = () => { if (this.dc !== dc) return; this._retry = 0; this._setConnected(true); this.emit('rtt', this.rtt); };
-    dc.onmessage = (e) => { if (this.dc !== dc) return; let d; try { d = JSON.parse(e.data); } catch (er) { return; } this._gotData(d); };
+    dc.onmessage = (e) => { if (this.dc !== dc) return; this.st.rd++; let d; try { d = JSON.parse(e.data); } catch (er) { return; } this._gotData(d); };
     dc.onclose = () => { if (this.dc === dc) this.dc = null; };
+  }
+
+  debugInfo() {
+    const ago = this.st.last ? Math.round((performance.now() - this.st.last) / 1000) + ' с назад' : '—';
+    const br = this.sig ? this.sig.clients.map((c) => `${c.url.split('//')[1].split('.')[1]} ${c.ready ? '✓' : '✗'}${c.drops ? ' обрывов ' + c.drops : ''}`).join(' · ') : 'нет';
+    return [`роль: ${this.isHost ? 'хост' : 'гость'} · связь: ${this.connected ? 'есть' : 'нет'} · ${this.direct ? 'напрямую' : 'через сервер'}`, `серверы: ${br}`, `отправлено: напрямую ${this.st.sd}, через сервер ${this.st.sr}`, `получено: напрямую ${this.st.rd}, через сервер ${this.st.rr}${this.st.foreign ? ', чужих ' + this.st.foreign : ''}`, `последнее сообщение: ${ago} · привет ${this.st.hellos} · ответов ${this.st.racks}`, `пинг: ${this.rtt} мс · версия ${CONFIG.version}`].join('\n');
   }
 
   // ---------- Хост ----------
@@ -187,8 +195,9 @@ class Net {
     this.emit('status', 'Комната открыта');
   }
   async _hostSig(m) {
-    if (m.k === 'd') { if (m.g !== this.gid) return; if (this.direct) this._closePc(); this._gotData(m.d); return; }
+    if (m.k === 'd') { if (m.g !== this.gid) { this.st.foreign = (this.st.foreign || 0) + 1; return; } this.st.rr++; if (this.direct) this._closePc(); this._gotData(m.d); return; }
     if (m.k === 'hello') {
+      this.st.hellos++;
       this.relayTo = this.topic('g/' + m.gid);
       this.sig.pub(this.relayTo, { k: 'rack' });
       // повтор того же «привет» — просто шлём уже готовое предложение ещё раз
@@ -221,7 +230,7 @@ class Net {
       this.emit('status', 'Ищу комнату…');
       if (!this.gid) this.gid = Math.random().toString(36).slice(2, 10);
       let offered = false, done = false, hello = null;
-      const joinId = Math.random().toString(36).slice(2, 10);
+      const joinId = Math.random().toString(36).slice(2, 10); this._joinId = joinId;
       const fail = (e) => { if (!done) { done = true; clearInterval(hello); reject(new Error(e)); } };
       if (!this.sig) {
         this.sig = new Signal((t, m) => this._guestSig(m));
@@ -238,8 +247,9 @@ class Net {
     });
   }
   async _guestSig(m) {
-    if (m.k === 'd') { if (this.direct) this._closePc(); this._gotData(m.d); return; }
+    if (m.k === 'd') { this.st.rr++; if (this.direct) this._closePc(); this._gotData(m.d); return; }
     if (m.k === 'rack' || m.k === 'offer') {
+      this.st.racks++;
       this.relayTo = this.topic('h');
       if (!this.connected) { this._retry = 0; this._setConnected(true); }
       this._onOpen && this._onOpen();
