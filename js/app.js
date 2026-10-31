@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function h(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
 window.GAMES = window.GAMES || {};
-const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands'];
+const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands', 'house'];
 
 const App = {
   net: new Net(),
@@ -295,7 +295,7 @@ const App = {
     const el = h(`
       <div class="panel">
         <h1 class="title">${esc(CONFIG.siteTitle)}</h1>
-        <p class="subtitle">двенадцать игр для двоих · на разных концах карты</p>
+        <p class="subtitle">тринадцать игр для двоих · на разных концах карты</p>
         <label class="lbl">Как тебя зовут?</label>
         <input class="inp" id="name" maxlength="16" placeholder="Твоё имя" value="${esc(this.me.name)}" autocomplete="off">
         ${room ? `
@@ -622,6 +622,7 @@ const ISLAND_TOP = {
   constellation: ['#a58bff', '#5a3fb0'], lighthouse: ['#f1d9a4', '#c49a5c'], keys: ['#6cc9b4', '#2f7f78'], garden: ['#86e39a', '#3b9a5e'], cards: ['#f3c76b', '#b0782c'],
   bomb: ['#f2a07a', '#a3453a'], starfall: ['#9fb8ff', '#4a5cc0'], usquiz: ['#ffb3d1', '#c0507e'],
   islands: ['#9fe7c4', '#3f9a7a'],
+  house: ['#5a5048', '#1e1a16'],
   maze: ['#8a7aa8', '#3d3258'], cats: ['#ffcf9a', '#c9783a'], lights: ['#ffe9a8', '#5a6ad6'],
 };
 
@@ -852,6 +853,17 @@ const MINI = {
     g.globalCompositeOperation = 'lighter';
     for (const [d, c] of [[0, '#ffb347'], [Math.PI, '#8fb0ff']]) Glow.draw(g, Math.cos(a + d) * r * 0.7, -r * 0.75 + Math.sin(a + d) * r * 0.18, r * 0.3, c, 0.95);
     g.globalCompositeOperation = 'source-over';
+  },
+  house(g, r, t) {
+    // мрачный дом в тумане с одним горящим окном
+    g.fillStyle = '#0c0a0c';
+    g.fillRect(-r * 0.42, -r * 0.62, r * 0.84, r * 0.6);
+    g.beginPath(); g.moveTo(-r * 0.5, -r * 0.62); g.lineTo(0, -r * 1.05); g.lineTo(r * 0.5, -r * 0.62); g.fill();
+    g.fillRect(r * 0.18, -r * 1.12, r * 0.08, r * 0.3);
+    const flick = 0.75 + Math.sin(t * 9) * 0.1 + (Math.random() < 0.03 ? -0.5 : 0);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const on = i === 1 && j === 0; g.fillStyle = on ? `rgba(220,170,90,${flick})` : '#1a1a20'; g.fillRect(-r * 0.32 + i * r * 0.24, -r * 0.54 + j * r * 0.24, r * 0.12, r * 0.14); }
+    g.globalCompositeOperation = 'lighter'; Glow.draw(g, -r * 0.02, -r * 0.47, r * 0.35, '#ffb060', 0.35 * flick); g.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 3; i++) { const k = (t * 0.15 + i / 3) % 1; g.fillStyle = `rgba(180,190,190,${0.18 * Math.sin(k * Math.PI)})`; g.beginPath(); g.ellipse(-r + k * r * 2, -r * 0.15 - i * r * 0.12, r * 0.5, r * 0.08, 0, 0, TAU); g.fill(); }
   },
 };
 
