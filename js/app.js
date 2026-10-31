@@ -26,7 +26,7 @@ const App = {
     this.bindNet();
     this.bindHubInput();
     $('#rotate .skip').onclick = () => document.body.classList.add('rot-skip');
-    this.showStart();
+    if (new URLSearchParams(location.search).get('diag')) this.showDiag(); else this.showStart();
     this.checkVersion();
   },
 
@@ -305,10 +305,10 @@ const App = {
           <label class="lbl">или войти по коду</label>
           <div class="row"><input class="inp code" id="code" maxlength="12" placeholder="ЛИС-27" autocomplete="off"><button class="btn ghost" id="join" style="margin-top:0;flex:0 0 110px">Войти</button></div>
         `}
-        <div class="err" id="err">${errText ? esc(errText) : ''}</div>
+        <div class="err" id="err">${errText || ''}</div>
         <div class="hint">${local
           ? '🧪 Тестовый режим: открой вторую вкладку с этим же адресом и войди по коду.<br><a id="online">вернуться в обычный режим</a>'
-          : 'Проверить на одном компьютере: <a id="localtest">тест в двух вкладках</a>'}</div>
+          : 'Проверить на одном компьютере: <a id="localtest">тест в двух вкладках</a><br><a href="?diag=1">проверка связи</a>'}</div>
       </div>`);
     this.setUI(el);
     const nameIn = $('#name', el);
@@ -331,6 +331,39 @@ const App = {
     if ($('#joinLink', el)) $('#joinLink', el).onclick = () => { if (getName()) this.joinRoom(room); };
     if ($('#localtest', el)) $('#localtest', el).onclick = () => { location.search = '?local=1'; };
     if ($('#online', el)) $('#online', el).onclick = () => { location.search = ''; };
+  },
+
+  // ---------- Проверка связи: что именно блокируется ----------
+  async showDiag() {
+    this.screen = 'diag';
+    const el = h(`<div class="panel"><h2 style="margin:0 0 6px;text-align:center">Проверка связи</h2>
+      <p class="hint" style="margin:0 0 12px">Проверка идёт ~20 секунд. Пришли скриншот результата.</p><div id="dg"></div>
+      <button class="btn ghost" id="dgBack">← назад</button></div>`);
+    this.setUI(el);
+    $('#dgBack', el).onclick = () => { location.search = ''; };
+    const box = $('#dg', el);
+    const row = (name) => { const r = h(`<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px"><span>${name}</span><b>…</b></div>`); box.appendChild(r); return (ok, txt) => { const b = $('b', r); b.textContent = txt || (ok ? '✓' : '✗'); b.style.color = ok ? '#7dffb5' : '#ff8a8a'; }; };
+    const withT = (p, ms) => Promise.race([p, new Promise((_, rj) => setTimeout(() => rj(new Error('timeout')), ms))]);
+    row('Сайт')(true);
+    const s1 = row('Сервер связи (peerjs.com)');
+    try { const r = await withT(fetch('https://0.peerjs.com/peerjs/id?ts=' + Date.now(), { cache: 'no-store' }), 7000); s1(r.ok); } catch (e) { s1(false, '✗ ' + (e.message === 'timeout' ? 'нет ответа' : 'блок')); }
+    const s2 = row('Вход на сервер связи');
+    try { await withT(new Promise((res, rej) => { const p = new Peer(undefined, { debug: 0 }); p.on('open', () => { res(); p.destroy(); }); p.on('error', (er) => rej(er)); }), 9000); s2(true); } catch (e) { s2(false); }
+    const stun = async (url) => {
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: url }] });
+      pc.createDataChannel('x');
+      let found = false;
+      pc.onicecandidate = (ev) => { if (ev.candidate && / srflx /.test(ev.candidate.candidate)) found = true; };
+      await pc.setLocalDescription(await pc.createOffer());
+      await new Promise((r) => setTimeout(r, 4000));
+      pc.close(); return found;
+    };
+    for (const s of CONFIG.iceServers) {
+      const u = Array.isArray(s.urls) ? s.urls[0] : s.urls;
+      const f = row(u.replace(/^(stun|turns?):/, '') + (u.startsWith('turn') ? ' (TURN)' : ''));
+      try { f(await stun(u)); } catch (e) { f(false); }
+    }
+    box.appendChild(h('<p class="hint">✓ у сервера связи и хотя бы у одного STUN — значит, должно работать без VPN.</p>'));
   },
 
   async createRoom(attempt = 0) {
@@ -376,7 +409,9 @@ const App = {
     $('#cancel', el).onclick = () => location.reload();
     try { await this.net.join(code); }
     catch (e) {
-      const msg = e.message === 'notfound' ? 'Комната не найдена. Проверь код — и что комната создана.' : 'Не получилось подключиться. Попробуй ещё раз.';
+      const msg = e.message === 'notfound' ? 'Комната не найдена. Проверь код — и что комната создана.'
+        : e.message === 'server' ? 'Сервер связи недоступен (возможно, блокировка). <a href="?diag=1">Проверка связи</a>'
+        : 'Соединение не пробилось. Попробуй ещё раз. <a href="?diag=1">Проверка связи</a>';
       this.net = new Net(); this.bindNet();
       this.showStart(msg);
     }

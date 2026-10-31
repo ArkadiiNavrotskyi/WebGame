@@ -86,7 +86,7 @@ class Net {
         console.warn('peer error', err.type, err);
         if (!done) {
           if (err.type === 'unavailable-id') reject(new Error('busy'));
-          else reject(err);
+          else reject(new Error(['network', 'server-error', 'socket-error', 'socket-closed'].includes(err.type) ? 'server' : err.type || 'p2p'));
         }
       });
     });
@@ -101,7 +101,7 @@ class Net {
       const start = () => {
         const conn = this.peer.connect(CONFIG.peerPrefix + code.id, { reliable: true, serialization: 'json' });
         let ok = false;
-        const to = setTimeout(() => { if (!ok) reject(new Error('timeout')); }, 15000);
+        const to = setTimeout(() => { if (!ok) reject(new Error('p2p')); }, 15000);
         conn.on('open', () => { ok = true; clearTimeout(to); resolve(); });
         this._bindConn(conn);
       };
@@ -113,7 +113,7 @@ class Net {
       peer.on('error', (err) => {
         console.warn('peer error', err.type, err);
         if (err.type === 'peer-unavailable') reject(new Error('notfound'));
-        else if (!this.connected) reject(err);
+        else if (!this.connected) reject(new Error(['network', 'server-error', 'socket-error', 'socket-closed'].includes(err.type) ? 'server' : 'p2p'));
       });
     });
   }

@@ -1,7 +1,7 @@
 // Настройки сайта. Всё, что можно поменять без программирования, — здесь.
 window.CONFIG = {
   siteTitle: 'Наше небо',
-  version: 7, // меняется скриптом tools/bump-version.js при каждой выкладке
+  version: 8, // меняется скриптом tools/bump-version.js при каждой выкладке
 
   // Послание, которое откроется в финале «Двух ключей». Можно переписать.
   finalMessage: 'Даже если между нами тысячи километров —\nмы смотрим на одно и то же небо.\nСпасибо, что ты есть. ✦',
@@ -13,9 +13,11 @@ window.CONFIG = {
   peerPrefix: 'nashe-nebo-v1-',
 
   // Серверы для соединения через интернет (STUN). TURN можно добавить позже, если связь не пробьётся.
+  // Google в России часто недоступен, поэтому есть и другие.
   iceServers: [
+    { urls: 'stun:stun.cloudflare.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun.sipnet.ru:3478' },
+    { urls: 'stun:stun.nextcloud.com:443' },
   ],
 };
