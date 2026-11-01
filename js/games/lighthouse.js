@@ -30,7 +30,7 @@
     tagline: 'Пять штормовых ночей и один луч света на двоих',
     landscape: true,
     roles: [
-      { id: 'captain', name: 'Капитан', icon: '⛵', desc: 'Ведёшь лодку сквозь ночной шторм. Почти ничего не видно — только то, что освещает маяк.', ctrl: { pc: 'W/↑ — вперёд, A/D ←/→ — поворот, S/↓ — назад', touch: 'джойстик слева — куда плыть' } },
+      { id: 'captain', name: 'Капитан', icon: '⛵', desc: 'Ведёшь лодку сквозь ночной шторм. Почти ничего не видно — только то, что освещает маяк.', ctrl: { pc: 'стрелки или WASD — куда плыть (лодка сама развернётся), или зажми мышь — плыть к курсору', touch: 'джойстик слева — куда плыть' } },
       { id: 'keeper', name: 'Смотритель', icon: '🗼', desc: 'Видишь всё море сверху, но тускло. Ведёшь луч маяка, предупреждаешь о скалах, воронках и щупальцах.', ctrl: { pc: 'зажми мышь — светить лучом, Пробел — колокол', touch: 'держи палец — светить лучом, кнопка 🔔 — колокол' } },
     ],
     rules: [
@@ -315,7 +315,14 @@
     // ================= Ввод =================
     bindInput() {
       const c = this.ctx.canvas;
-      if (!this.cap) {
+      if (this.cap) {
+        // Капитан: зажатая мышь — плыть к курсору
+        const set = (e) => { if (this.steer) this.steer = this.st.pt(e); };
+        c.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') return; c.setPointerCapture(e.pointerId); this.steer = this.st.pt(e); });
+        c.addEventListener('pointermove', set);
+        const up = () => { this.steer = null; };
+        c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+      } else {
         const set = (e) => { this.pointer = this.st.pt(e); };
         c.addEventListener('pointerdown', (e) => { c.setPointerCapture(e.pointerId); set(e); this.holding = true; });
         c.addEventListener('pointermove', set);
@@ -370,18 +377,19 @@
 
     updateBoat(dt) {
       const b = this.boat, k = this.keys, pad = this.pad, Wd = this.W;
-      let thrust = 0, turn = 0;
-      if (k.any('KeyW', 'ArrowUp')) thrust = 1;
-      if (k.any('KeyS', 'ArrowDown')) thrust = -0.5;
-      if (k.any('KeyA', 'ArrowLeft')) turn = -1;
-      if (k.any('KeyD', 'ArrowRight')) turn = 1;
-      if (pad && (pad.ax || pad.ay)) {
-        const m = Math.min(1, Math.hypot(pad.ax, pad.ay)), want = Math.atan2(pad.ay, pad.ax);
-        turn = clamp(angDiff(b.a, want) * 3, -1, 1); thrust = m * (Math.abs(angDiff(b.a, want)) < 1.6 ? 1 : 0.3);
-      }
-      const eng = 1 + this.up('engine') * 0.15, maxSp = 240 * eng;
-      b.a += turn * dt * 2.6;
-      b.vx += Math.cos(b.a) * thrust * 380 * eng * dt; b.vy += Math.sin(b.a) * thrust * 380 * eng * dt;
+      // простое управление: куда показываешь — туда и плывёт, лодка разворачивается сама
+      let dx = 0, dy = 0;
+      if (k.any('KeyW', 'ArrowUp')) dy -= 1;
+      if (k.any('KeyS', 'ArrowDown')) dy += 1;
+      if (k.any('KeyA', 'ArrowLeft')) dx -= 1;
+      if (k.any('KeyD', 'ArrowRight')) dx += 1;
+      if (pad && (pad.ax || pad.ay)) { dx = pad.ax; dy = pad.ay; }
+      if (this.steer) { const sx = this.steer.x - b.x, sy = this.steer.y - b.y, sd = Math.hypot(sx, sy); if (sd > 24) { dx = sx / sd * Math.min(1, sd / 120); dy = sy / sd * Math.min(1, sd / 120); } }
+      const mag = Math.min(1, Math.hypot(dx, dy));
+      let thrust = 0;
+      if (mag > 0.15) { const want = Math.atan2(dy, dx); b.a += angDiff(b.a, want) * Math.min(1, dt * 7); thrust = mag * (Math.abs(angDiff(b.a, want)) < 1.2 ? 1 : 0.35); }
+      const eng = 1 + this.up('engine') * 0.15, maxSp = 220 * eng;
+      b.vx += Math.cos(b.a) * thrust * 520 * eng * dt; b.vy += Math.sin(b.a) * thrust * 520 * eng * dt;
       const calm = Wd.slow > 0 ? 0.3 : 1;
       for (const w of Wd.waves || []) {
         const wx = w.x + Math.sin(b.y * 0.012 + w.id) * 40;
@@ -399,7 +407,7 @@
         if (o.t < 2 || o.t > 5.6) continue;
         for (const p of tentPoints(o)) if (dist(b.x, b.y, p[0], p[1]) < p[2] + 14 && b.inv <= 0) { b.vx += (b.x - o.x) * 2; b.vy += (b.y - o.y) * 2; this.boatHit(); break; }
       }
-      const drag = Math.exp(-1.6 * dt); b.vx *= drag; b.vy *= drag;
+      const drag = Math.exp((thrust ? -1.9 : -3.2) * dt); b.vx *= drag; b.vy *= drag;
       const sp = Math.hypot(b.vx, b.vy); if (sp > maxSp) { const m = Math.max(maxSp, sp * 0.96) / sp; b.vx *= m; b.vy *= m; }
       b.x += b.vx * dt; b.y += b.vy * dt;
       b.x = clamp(b.x, 20, W - 20); b.y = clamp(b.y, 20, H - 20);

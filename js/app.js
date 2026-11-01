@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function h(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 
 window.GAMES = window.GAMES || {};
-const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'garden', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands', 'house', 'hotel', 'train', 'sanatorium', 'cape', 'theatre'];
+const HUB_ORDER = ['constellation', 'lighthouse', 'keys', 'table', 'cards', 'bomb', 'starfall', 'usquiz', 'maze', 'cats', 'lights', 'islands', 'house', 'hotel', 'train', 'sanatorium', 'cape', 'theatre'];
 
 const App = {
   net: new Net(),
@@ -740,7 +740,7 @@ const App = {
 // ---------- Рисунок парящего острова для хаба ----------
 const ISLAND_ROCK = [[-1, 0], [-0.88, 0.22], [-0.7, 0.42], [-0.55, 0.62], [-0.32, 0.78], [-0.18, 1.08], [-0.02, 1.38], [0.12, 1.05], [0.3, 0.86], [0.5, 0.66], [0.68, 0.46], [0.86, 0.24], [1, 0]];
 const ISLAND_TOP = {
-  constellation: ['#a58bff', '#5a3fb0'], lighthouse: ['#f1d9a4', '#c49a5c'], keys: ['#6cc9b4', '#2f7f78'], garden: ['#86e39a', '#3b9a5e'], cards: ['#f3c76b', '#b0782c'],
+  constellation: ['#a58bff', '#5a3fb0'], lighthouse: ['#f1d9a4', '#c49a5c'], keys: ['#6cc9b4', '#2f7f78'], table: ['#3a9a5a', '#1a4a2a'], cards: ['#f3c76b', '#b0782c'],
   bomb: ['#f2a07a', '#a3453a'], starfall: ['#9fb8ff', '#4a5cc0'], usquiz: ['#ffb3d1', '#c0507e'],
   islands: ['#9fe7c4', '#3f9a7a'],
   house: ['#5a5048', '#1e1a16'],
@@ -838,22 +838,16 @@ const MINI = {
       g.restore();
     }
   },
-  garden(g, r, t) {
-    g.strokeStyle = '#6b4a3a'; g.lineWidth = r * 0.09; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(r * 0.05, 0); g.quadraticCurveTo(-r * 0.08, -r * 0.35, r * 0.02, -r * 0.62); g.stroke();
-    const blobs = [[-0.3, -0.75, 0.3], [0.25, -0.8, 0.32], [0, -1.05, 0.34], [-0.05, -0.7, 0.28]];
-    blobs.forEach(([bx, by, br], i) => {
-      const gr = g.createRadialGradient(bx * r - br * r * 0.3, by * r - br * r * 0.3, 0, bx * r, by * r, br * r);
-      gr.addColorStop(0, '#9af0a4'); gr.addColorStop(1, '#2e8a55');
-      g.fillStyle = gr; g.beginPath(); g.arc(bx * r + Math.sin(t + i) * r * 0.01, by * r, br * r, 0, TAU); g.fill();
-    });
-    g.globalCompositeOperation = 'lighter';
-    [[-0.3, -0.85], [0.2, -0.95], [0.05, -0.7], [0.32, -0.7], [-0.15, -1.1]].forEach(([fx, fy], i) => Glow.draw(g, fx * r, fy * r, r * 0.12, i % 2 ? '#ff9ccd' : '#ffd27a', 0.7 + Math.sin(t * 2 + i) * 0.3));
-    for (let i = 0; i < 4; i++) { const a = t * 0.7 + i * 1.6; Glow.draw(g, Math.cos(a) * r * 0.85, -r * 0.6 + Math.sin(a * 1.3) * r * 0.35, r * 0.07, '#e8ff9a', 0.8); }
-    g.globalCompositeOperation = 'source-over';
-    // маленькие цветы
-    [[-0.6, -0.04, '#ffb3d1'], [0.55, 0.02, '#c9b8ff'], [-0.35, 0.1, '#fff2a8'], [0.7, -0.08, '#ffb3d1']].forEach(([fx, fy, c]) => { g.fillStyle = c; g.beginPath(); g.arc(fx * r, fy * r, r * 0.04, 0, TAU); g.fill(); });
+  table(g, r, t) {
+    // зелёный стол, веер карт и хлопушка с конфетти
+    g.fillStyle = '#5a2e16'; g.beginPath(); g.ellipse(0, -r * 0.35, r * 0.78, r * 0.32, 0, 0, TAU); g.fill();
+    g.fillStyle = '#1f7a4a'; g.beginPath(); g.ellipse(0, -r * 0.38, r * 0.7, r * 0.27, 0, 0, TAU); g.fill();
+    const card = (x, y, a, s, red) => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = '#fbf6ec'; g.fillRect(-r * 0.11, -r * 0.16, r * 0.22, r * 0.32); g.strokeStyle = '#c8b8a0'; g.lineWidth = 1; g.strokeRect(-r * 0.11, -r * 0.16, r * 0.22, r * 0.32); g.fillStyle = red ? '#c8202e' : '#1a1a24'; g.font = `${r * 0.16}px serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s, 0, 0); g.restore(); };
+    const k = Math.sin(t * 1.5) * 0.05;
+    card(-r * 0.22, -r * 0.55, -0.35 + k, '♥', true); card(-r * 0.05, -r * 0.6, -0.1 + k, '♠', false); card(r * 0.12, -r * 0.6, 0.15 + k, '♦', true); card(r * 0.29, -r * 0.55, 0.4 + k, '♣', false);
+    for (let i = 0; i < 10; i++) { const a = t * 0.8 + i * 0.63; g.fillStyle = ['#ff6b8a', '#ffd27a', '#7dffb5', '#9fd8ff', '#c9a6ff'][i % 5]; g.fillRect(Math.cos(a) * r * 0.55, -r * 0.9 + Math.sin(a * 1.3) * r * 0.18, 4, 6); }
   },
+
   cards(g, r, t) {
     const card = (ang, ox, glyph, c1, c2, gc) => {
       g.save(); g.translate(ox * r, -r * 0.42); g.rotate(ang + Math.sin(t * 1.4 + ox * 5) * 0.04);

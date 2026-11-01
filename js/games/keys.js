@@ -43,6 +43,8 @@
   ];
   const LIFTS = [{ x: 540, w: 140, bottom: 780, top: 400 }, { x: 980, w: 140, bottom: 760, top: 210 }];
   const LEVERS = [360, 600, 1000, 1240];
+  // комнаты-переходы: дверь открывается, когда Путник до неё добрался
+  const TRAVERSE = ['bridges', 'lifts', 'dark'];
 
   GAMES.keys = {
     id: 'keys', title: 'Два ключа', icon: '🗝️', color: '#6fc3ff',
@@ -211,7 +213,8 @@
         case 'heart': R.heart = !!m.on; this.push(); break;
         case 'altar': R.altar = !!m.on; this.push(); break;
         case 'exit':
-          if (!R.open) return;
+          if (!R.open && TRAVERSE.includes(room.kind) && !R.leaving) { R.open = true; R.leaving = true; this.fx({ t: 'open' }); this.push(); const at = R.room; setTimeout(() => { if (this.R && this.R.room === at && at + 1 < ROOMS.length) this.goRoom(at + 1); }, 1100); return; }
+          if (!R.open || R.leaving) return;
           if (R.room + 1 < ROOMS.length) this.goRoom(R.room + 1);
           break;
       }
@@ -347,8 +350,9 @@
       if (kind === 'bells' && !R.open) { const i = near([0, 1, 2, 3].map((j) => this.bellPos(j)), 60); if (i >= 0) { this.hint = 'ударить в колокол'; if (use) this.toHost({ a: 'use', kind: 'bell', i }); } }
       if (kind === 'heart') { const on = Math.abs(p.x - 800) < 60 && p.ground && p.y <= 752; if (on !== this.onAltar) { this.onAltar = on; this.toHost({ a: 'altar', on }); } if (on) this.hint = R.done ? '' : 'стой на алтаре…'; }
       const d = this.doorRect();
-      if (R.open && !R.done && p.x > d.x + 20 && p.y > d.y && p.y - hh < d.y + d.h) { if (!this.exiting) { this.exiting = true; this.toHost({ a: 'exit' }); setTimeout(() => (this.exiting = false), 1500); } }
-      else if (!R.open && p.x > d.x - 30 && p.x < d.x + d.w && Math.abs(p.y - (d.y + d.h)) < 10) this.hint = this.hint || 'дверь заперта';
+      const canGo = R.open || TRAVERSE.includes(kind);
+      if (canGo && !R.done && p.x > d.x + 20 && p.y > d.y && p.y - hh < d.y + d.h) { if (!this.exiting) { this.exiting = true; this.toHost({ a: 'exit' }); setTimeout(() => (this.exiting = false), 1500); } }
+      else if (!canGo && p.x > d.x - 30 && p.x < d.x + d.w && Math.abs(p.y - (d.y + d.h)) < 10) this.hint = this.hint || 'дверь заперта';
     }
     die() {
       SFX.play('fail'); this.flash = 0.7; this.shake = 0.3;

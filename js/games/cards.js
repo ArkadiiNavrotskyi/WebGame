@@ -1,8 +1,9 @@
 'use strict';
-// «Хроники трёх королевств» — карточная дуэль на трёх линиях. Солнце, Луна и Лес.
+// «Хроники» — карточная дуэль на четырёх линиях. Десять королевств: от Солнца до Нежити и Драконов.
 (() => {
   const W = 1600, H = 900;
-  const LANES = [640, 860, 1080];
+  const LANES = [600, 780, 960, 1140];
+  const NL = LANES.length;
   const SLOT = { w: 150, h: 196 };
   const MY_Y = 548, EN_Y = 262;
   const CASTLE = { me: { x: 250, y: 650 }, en: { x: 250, y: 200 } };
@@ -46,36 +47,147 @@
     bloom: { n: 'Цветение', c: 3, t: 's', tg: 'none', art: '🌸', d: 'Все твои юниты: +1/+1' },
     rain: { n: 'Тёплый дождь', c: 2, t: 's', tg: 'none', art: '🌧️', d: 'Замку +3, взять карту' },
     wild: { n: 'Зов леса', c: 5, t: 's', tg: 'none', art: '🍃', d: 'Росток в каждую пустую линию' },
+    // Тьма
+    imp: { n: 'Бесёнок', c: 1, t: 'u', a: 2, h: 1, kw: ['rush'], art: '😈', d: 'Атакует сразу' },
+    whisper: { n: 'Шёпот', c: 1, t: 'u', a: 1, h: 2, kw: ['curse'], art: '👻', d: 'Удар: враг −1 атаки' },
+    cultist: { n: 'Культист', c: 2, t: 'u', a: 2, h: 2, bc: 'drain2', art: '🕯️', d: 'При выходе: 2 урона замку врага, своему +2' },
+    shadowblade: { n: 'Клинок тьмы', c: 3, t: 'u', a: 2, h: 2, kw: ['poison'], art: '🗡️', d: 'Яд: убивает любого, кого ранит' },
+    gargoyle: { n: 'Горгулья', c: 3, t: 'u', a: 2, h: 4, kw: ['shield'], art: '🗿', d: 'Первый урон — мимо' },
+    nightmare: { n: 'Кошмар', c: 4, t: 'u', a: 4, h: 3, kw: ['rush', 'curse'], art: '🐎', d: 'Рывок, проклинает врага' },
+    demon: { n: 'Демон бездны', c: 6, t: 'u', a: 5, h: 5, kw: ['fury'], art: '👹', d: 'Атакует дважды' },
+    darkpact: { n: 'Тёмный договор', c: 1, t: 's', tg: 'none', art: '📜', d: 'Взять 2 карты, замку −2' },
+    hexspell: { n: 'Порча', c: 2, t: 's', tg: 'enemyUnit', art: '🔮', d: 'Враг −3 атаки' },
+    voidspell: { n: 'Пустота', c: 4, t: 's', tg: 'enemyUnit', art: '🕳️', d: 'Уничтожить юнита, замку −3' },
+    // Нежить
+    zombie: { n: 'Зомби', c: 1, t: 'u', a: 2, h: 1, kw: ['undying'], art: '🧟', d: 'Встаёт один раз после смерти' },
+    skeleton: { n: 'Скелет', c: 1, t: 'u', a: 1, h: 1, kw: ['undying', 'rush'], art: '💀', d: 'Рывок, встаёт после смерти' },
+    rat: { n: 'Чумная крыса', c: 1, t: 'u', a: 1, h: 1, kw: ['poison'], art: '🐀', d: 'Яд: убивает любого, кого ранит' },
+    ghoul: { n: 'Упырь', c: 3, t: 'u', a: 3, h: 3, bc: 'raise', art: '🧌', d: 'При выходе: поднять Зомби в пустую линию' },
+    banshee: { n: 'Банши', c: 3, t: 'u', a: 2, h: 2, kw: ['archer'], bc: 'hex', art: '😱', d: 'Крик: 2 урона врагу на линии, бьёт в замок' },
+    abom: { n: 'Поганище', c: 5, t: 'u', a: 4, h: 6, kw: ['thorns', 'undying'], art: '🦴', d: 'Шипы, встаёт после смерти' },
+    lich: { n: 'Лич', c: 7, t: 'u', a: 5, h: 6, bc: 'raiseAll', art: '☠️', d: 'При выходе: Зомби во все пустые линии' },
+    gravechill: { n: 'Могильный холод', c: 2, t: 's', tg: 'enemyUnit', art: '⚰️', d: '2 урона и враг замерзает' },
+    plague: { n: 'Чума', c: 4, t: 's', tg: 'none', art: '🦠', d: '1 урон всем врагам и 2 замку' },
+    necro: { n: 'Некромантия', c: 3, t: 's', tg: 'none', art: '📿', d: 'Зомби во все пустые линии' },
+    // Вампиры
+    thrall: { n: 'Слуга крови', c: 1, t: 'u', a: 1, h: 2, kw: ['vamp'], art: '🩸', d: 'Лечит замок уроном' },
+    hound: { n: 'Кровавый пёс', c: 2, t: 'u', a: 3, h: 1, kw: ['rush'], art: '🐕', d: 'Атакует сразу' },
+    vampire: { n: 'Вампир', c: 3, t: 'u', a: 3, h: 3, kw: ['vamp'], art: '🧛', d: 'Лечит замок уроном' },
+    count: { n: 'Летучий граф', c: 4, t: 'u', a: 3, h: 3, kw: ['archer', 'vamp'], art: '🎩', d: 'Бьёт в замок и лечится' },
+    countess: { n: 'Графиня', c: 5, t: 'u', a: 4, h: 5, kw: ['vamp'], bc: 'drain2', art: '👸', d: 'При выходе: высосать 2 из замка врага' },
+    elder: { n: 'Древний вампир', c: 7, t: 'u', a: 5, h: 6, kw: ['vamp', 'fury'], art: '🦇', d: 'Дважды бьёт и пьёт кровь' },
+    bite: { n: 'Укус', c: 1, t: 's', tg: 'enemyUnit', art: '🦷', d: '2 урона юниту, замку +2' },
+    feast: { n: 'Пир крови', c: 3, t: 's', tg: 'none', art: '🍷', d: 'Твоим юнитам +1/+1, замку +2' },
+    coffin: { n: 'Гроб', c: 2, t: 's', tg: 'allyUnit', art: '⚱️', d: 'Юниту +3 здоровья и щит' },
+    // Лёд
+    penguin: { n: 'Пингвин', c: 1, t: 'u', a: 1, h: 3, art: '🐧', d: '' },
+    icewolf: { n: 'Ледяной волк', c: 2, t: 'u', a: 2, h: 2, kw: ['frostbite'], art: '🐺', d: 'Удар замораживает врага' },
+    snowowl: { n: 'Снежная сова', c: 2, t: 'u', a: 1, h: 3, kw: ['archer'], art: '🦉', d: 'Стреляет прямо в замок' },
+    icemage: { n: 'Ледяная ведьма', c: 3, t: 'u', a: 2, h: 3, bc: 'freezeLane', art: '🧊', d: 'При выходе: заморозить врага на линии' },
+    yeti: { n: 'Йети', c: 4, t: 'u', a: 3, h: 6, kw: ['thorns'], art: '🦍', d: 'Шипы: ударившему −2' },
+    snowman: { n: 'Снежный голем', c: 5, t: 'u', a: 4, h: 6, kw: ['shield'], art: '⛄', d: 'Первый урон — мимо' },
+    frostdragon: { n: 'Ледяной дракон', c: 7, t: 'u', a: 5, h: 7, kw: ['frostbite', 'fury'], art: '🐲', d: 'Дважды бьёт и морозит' },
+    blizzard: { n: 'Метель', c: 4, t: 's', tg: 'none', art: '🌨️', d: 'Все враги замерзают и получают 1 урон' },
+    icelance: { n: 'Ледяное копьё', c: 2, t: 's', tg: 'enemyAny', art: '❄️', d: '2 урона; юнит замерзает' },
+    shatter: { n: 'Раскол', c: 3, t: 's', tg: 'enemyUnit', art: '💎', d: 'Замёрзший — уничтожить, иначе 2 урона' },
+    // Буря
+    sprite: { n: 'Искорка', c: 1, t: 'u', a: 1, h: 1, kw: ['rush', 'archer'], art: '✨', d: 'Сразу бьёт в замок' },
+    stormguard: { n: 'Страж бури', c: 2, t: 'u', a: 2, h: 3, kw: ['shield'], art: '🛡️', d: 'Первый урон — мимо' },
+    thunderbird: { n: 'Громовая птица', c: 3, t: 'u', a: 3, h: 2, kw: ['rush', 'archer'], art: '🐦', d: 'Сразу бьёт в замок' },
+    caller: { n: 'Заклинатель бури', c: 3, t: 'u', a: 2, h: 3, bc: 'zapAll', art: '🌩️', d: 'При выходе: 1 урон всем врагам' },
+    tornado: { n: 'Смерч', c: 4, t: 'u', a: 4, h: 4, kw: ['rush'], art: '🌪️', d: 'Атакует сразу' },
+    titan: { n: 'Титан грозы', c: 7, t: 'u', a: 6, h: 7, bc: 'zapAll', art: '⛈️', d: 'При выходе: 1 урон всем врагам' },
+    chain: { n: 'Цепная молния', c: 3, t: 's', tg: 'none', art: '⚡', d: '2 урона всем вражеским юнитам' },
+    gust: { n: 'Порыв ветра', c: 1, t: 's', tg: 'enemyUnit', art: '💨', d: '1 урон и враг пропускает атаку' },
+    overload: { n: 'Перегрузка', c: 1, t: 's', tg: 'none', art: '🔋', d: '+1 💧 сейчас и взять карту' },
+    thunder: { n: 'Гром', c: 5, t: 's', tg: 'enemyAny', art: '🔊', d: '5 урона юниту или замку' },
+    // Бездна
+    crab: { n: 'Краб', c: 1, t: 'u', a: 1, h: 2, kw: ['shield'], art: '🦀', d: 'Первый урон — мимо' },
+    eel: { n: 'Угорь', c: 2, t: 'u', a: 1, h: 3, kw: ['poison'], art: '🐍', d: 'Яд: убивает любого, кого ранит' },
+    angler: { n: 'Удильщик', c: 3, t: 'u', a: 2, h: 3, kw: ['archer'], art: '🐟', d: 'Стреляет прямо в замок' },
+    siren: { n: 'Сирена', c: 3, t: 'u', a: 2, h: 3, bc: 'freezeLane', art: '🧜', d: 'Песня: враг на линии засыпает' },
+    shark: { n: 'Акула', c: 4, t: 'u', a: 5, h: 3, kw: ['rush'], art: '🦈', d: 'Атакует сразу' },
+    spirit: { n: 'Водный дух', c: 2, t: 'u', a: 2, h: 2, bc: 'heal3', art: '🌊', d: 'При выходе: замку +3' },
+    kraken: { n: 'Кракен', c: 7, t: 'u', a: 6, h: 8, kw: ['thorns', 'fury'], art: '🦑', d: 'Дважды бьёт и колется' },
+    whirl: { n: 'Водоворот', c: 4, t: 's', tg: 'enemyUnit', art: '🌀', d: 'Уничтожить юнита' },
+    tidal: { n: 'Цунами', c: 3, t: 's', tg: 'none', art: '🌊', d: '2 урона всем врагам' },
+    pearl: { n: 'Жемчужина', c: 1, t: 's', tg: 'none', art: '🦪', d: 'Замку +2, взять карту' },
+    // Драконы
+    egg: { n: 'Драконье яйцо', c: 1, t: 'u', a: 0, h: 3, kw: ['grow'], art: '🥚', d: 'Растёт: +1/+1 каждый ход' },
+    whelp: { n: 'Дракончик', c: 1, t: 'u', a: 1, h: 2, art: '🦎', d: '' },
+    kobold: { n: 'Кобольд', c: 2, t: 'u', a: 3, h: 2, art: '⛏️', d: '' },
+    wyvern: { n: 'Виверна', c: 3, t: 'u', a: 3, h: 3, kw: ['rush'], art: '🦖', d: 'Атакует сразу' },
+    dknight: { n: 'Всадник дракона', c: 4, t: 'u', a: 4, h: 4, kw: ['shield'], art: '🏇', d: 'Первый урон — мимо' },
+    brood: { n: 'Мать драконов', c: 5, t: 'u', a: 3, h: 6, bc: 'whelps', art: '🐉', d: 'При выходе: дракончики в пустые линии' },
+    ancient: { n: 'Древний дракон', c: 8, t: 'u', a: 7, h: 8, kw: ['fury', 'rush'], art: '🔥', d: 'Сразу и дважды' },
+    breath: { n: 'Огненное дыхание', c: 3, t: 's', tg: 'enemyAny', art: '🌋', d: '4 урона юниту или замку' },
+    hoard: { n: 'Сокровищница', c: 2, t: 's', tg: 'none', art: '💰', d: '+1 💧 сейчас и взять карту' },
+    roar: { n: 'Рёв', c: 2, t: 's', tg: 'none', art: '📢', d: 'Твоим юнитам +1/+1' },
   };
   const DECKS = {
     sun: { squire: 2, archer: 2, fox: 3, knight: 2, griffin: 2, paladin: 2, phoenix: 1, sundragon: 1, fireball: 2, warcry: 1, bless: 1, herald: 1 },
     moon: { owl: 2, shade: 2, hedgehog: 2, witch: 2, ghostwolf: 2, starkeeper: 2, whale: 1, sleep: 2, moonlight: 1, eclipse: 1, starfall: 1, mirror: 1, bat: 1 },
     forest: { sprout: 3, elf: 2, deer: 2, dryad: 2, boar: 2, bear: 2, ent: 1, roots: 2, bloom: 1, rain: 2, wild: 1 },
+    dark: { imp: 3, whisper: 2, cultist: 2, shadowblade: 2, gargoyle: 2, nightmare: 2, demon: 1, darkpact: 2, hexspell: 2, voidspell: 1, bat: 1 },
+    undead: { zombie: 3, skeleton: 3, rat: 2, ghoul: 2, banshee: 2, abom: 2, lich: 1, gravechill: 2, plague: 1, necro: 2 },
+    vampire: { thrall: 3, bat: 2, hound: 2, vampire: 3, count: 2, countess: 1, elder: 1, bite: 3, feast: 1, coffin: 2 },
+    frost: { penguin: 3, icewolf: 3, snowowl: 2, icemage: 2, yeti: 2, snowman: 2, frostdragon: 1, blizzard: 1, icelance: 2, shatter: 2 },
+    storm: { sprite: 3, stormguard: 2, thunderbird: 3, caller: 2, tornado: 2, titan: 1, chain: 2, gust: 3, overload: 2, thunder: 1 },
+    abyss: { crab: 3, eel: 2, angler: 2, siren: 2, shark: 2, spirit: 2, kraken: 1, whirl: 1, tidal: 2, pearl: 3 },
+    dragon: { egg: 3, whelp: 3, kobold: 2, wyvern: 3, dknight: 2, brood: 1, ancient: 1, breath: 2, hoard: 2, roar: 2 },
   };
   const FAC = {
-    sun: { name: 'Солнце', c1: '#c86a32', c2: '#5a2416', edge: '#ffd27a', glow: '#ffb35c', icon: 'sun' },
-    moon: { name: 'Луна', c1: '#3b3d93', c2: '#151640', edge: '#c9d4ff', glow: '#8fa8ff', icon: 'moon' },
-    forest: { name: 'Лес', c1: '#2f7a4a', c2: '#10301f', edge: '#c4f5c8', glow: '#7be08a', icon: 'tree' },
+    sun: { name: 'Солнце', c1: '#c86a32', c2: '#5a2416', edge: '#ffd27a', glow: '#ffb35c', icon: 'sun', em: '☀️' },
+    moon: { name: 'Луна', c1: '#3b3d93', c2: '#151640', edge: '#c9d4ff', glow: '#8fa8ff', icon: 'moon', em: '🌙' },
+    forest: { name: 'Лес', c1: '#2f7a4a', c2: '#10301f', edge: '#c4f5c8', glow: '#7be08a', icon: 'tree', em: '🌳' },
+    dark: { name: 'Тьма', c1: '#4a2a5e', c2: '#120818', edge: '#e0b8ff', glow: '#b05cff', em: '🌑' },
+    undead: { name: 'Нежить', c1: '#4a5a3a', c2: '#121a0e', edge: '#d0f0a8', glow: '#9cff5c', em: '🧟' },
+    vampire: { name: 'Вампиры', c1: '#8a1a2c', c2: '#24050c', edge: '#ffb8c0', glow: '#ff4a5e', em: '🧛' },
+    frost: { name: 'Лёд', c1: '#3a7aa8', c2: '#0b1f33', edge: '#dcf6ff', glow: '#9ae4ff', em: '❄️' },
+    storm: { name: 'Буря', c1: '#5a4aa8', c2: '#130f2e', edge: '#fff2a8', glow: '#ffe04a', em: '⚡' },
+    abyss: { name: 'Бездна', c1: '#1a6a6a', c2: '#031616', edge: '#a8fff2', glow: '#2ae0c8', em: '🐙' },
+    dragon: { name: 'Драконы', c1: '#a84a1a', c2: '#2a0c04', edge: '#ffdca8', glow: '#ff8a2a', em: '🐉' },
+  };
+  const FAC_DESC = {
+    sun: 'Напор и огонь: рывки, двойные удары, огненные шары.', moon: 'Хитрость: шипы, сон, вампиризм, затмения.', forest: 'Рост: ростки становятся великанами, дриады лечат.',
+    dark: 'Яд и проклятия: каждый удар ослабляет врага.', undead: 'Зомби и скелеты встают после смерти и множатся.', vampire: 'Пьют кровь: каждый удар лечит твой замок.',
+    frost: 'Замораживают врагов и бьют замёрзших насмерть.', storm: 'Молнии по всем врагам и быстрые летуны.', abyss: 'Глубинный яд, сирены и кракен.', dragon: 'Яйца растут в драконов, дыхание жжёт замки.',
   };
   // силы героев: раз в ход за 2 маны
   const POWERS = {
     sun: { n: 'Искра', d: '1 урон любой цели', tg: 'enemyAny', icon: '✴️' },
     moon: { n: 'Лунный бальзам', d: 'Замку +3', tg: 'none', icon: '🌙' },
     forest: { n: 'Семечко', d: 'Росток в свою пустую линию', tg: 'lane', icon: '🌱' },
+    dark: { n: 'Проклятие', d: 'Враг −2 атаки', tg: 'enemyUnit', icon: '🌑' },
+    undead: { n: 'Поднять мёртвого', d: 'Зомби в свою пустую линию', tg: 'lane', icon: '🧟' },
+    vampire: { n: 'Кровопускание', d: '1 урон цели, замку +1', tg: 'enemyAny', icon: '🩸' },
+    frost: { n: 'Ледяное дыхание', d: 'Заморозить врага', tg: 'enemyUnit', icon: '❄️' },
+    storm: { n: 'Разряд', d: '2 урона юниту', tg: 'enemyUnit', icon: '⚡' },
+    abyss: { n: 'Прилив', d: 'Своему юниту +1/+1', tg: 'allyUnit', icon: '🌊' },
+    dragon: { n: 'Пламя', d: '2 урона замку врага', tg: 'none', icon: '🔥' },
   };
   const POWER_COST = 2;
-  const KW_NAMES = { shield: 'Щит', rush: 'Рывок', archer: 'Стрелок', fury: 'Ярость', vamp: 'Вампир', thorns: 'Шипы', grow: 'Рост' };
+  const KW_NAMES = { shield: 'Щит', rush: 'Рывок', archer: 'Стрелок', fury: 'Ярость', vamp: 'Вампир', thorns: 'Шипы', grow: 'Рост', undying: 'Нежить', poison: 'Яд', curse: 'Проклятие', frostbite: 'Мороз' };
+  // руны линий: у каждой линии своя, случайная на матч
+  const RUNES = {
+    fire: { icon: '🔥', n: 'Пламя', d: 'юнит здесь бьёт на +1' },
+    spring: { icon: '💧', n: 'Родник', d: 'держишь линию — +1 💧 в начале хода' },
+    bastion: { icon: '🛡️', n: 'Бастион', d: 'юнит, вышедший сюда, получает щит' },
+    grave: { icon: '💀', n: 'Погост', d: 'павший здесь встаёт Зомби' },
+    star: { icon: '✨', n: 'Звезда', d: 'юнит здесь +1 здоровья каждый ход' },
+  };
   const has = (u, k) => (CARDS[u.cid].kw || []).includes(k);
 
   GAMES.cards = {
     id: 'cards', title: 'Хроники', icon: '🃏', color: '#ffc35c',
-    tagline: 'Дуэль королевств: Солнце, Луна и Лес',
+    tagline: 'Дуэль десяти королевств: от Солнца до Нежити',
     roles: null, landscape: true,
     rules: [
       'У каждого замок с 25 ❤. Разрушь замок соперника!',
-      'Каждый ход растёт мана 💧 (до 8). Ставь юнитов на 3 линии и применяй заклинания.',
+      'Каждый ход растёт мана 💧 (до 8). Ставь юнитов на 4 линии и применяй заклинания.',
       'В конце твоего хода юниты бьют врага на своей линии — а если линия пуста, бьют прямо в замок.',
-      'Новые юниты атакуют со следующего хода (кроме «Рывка»). Солнце — напор, Луна — хитрость, Лес — рост.',
+      'Новые юниты атакуют со следующего хода (кроме «Рывка»). 10 королевств: Солнце, Луна, Лес, Тьма, Нежить, Вампиры, Лёд, Буря, Бездна, Драконы.',
+      'У каждой линии своя <b>руна</b>: 🔥 Пламя, 💧 Родник, 🛡️ Бастион, 💀 Погост, ✨ Звезда — дерись за выгодные линии!',
       'Раз в ход можно использовать <b>силу героя</b> за 2 💧. Кончилась колода — замок слабеет.',
     ],
     info() { const s = Store.get('cards_score', { w: 0, l: 0 }); return s.w + s.l ? `счёт ${s.w} : ${s.l}` : 'карточная дуэль'; },
@@ -104,10 +216,10 @@
         const deck = [];
         for (const [cid, n] of Object.entries(DECKS[fac])) for (let i = 0; i < n; i++) deck.push(cid);
         RNG(Math.random() * 1e9).shuffle(deck);
-        return { hp: MAX_HP, mana: 0, max: 0, turns: 0, fac, deck, hand: [], board: [null, null, null] };
+        return { hp: MAX_HP, mana: 0, max: 0, turns: 0, fac, deck, hand: [], board: Array(NL).fill(null) };
       };
       this.uid = 1;
-      const G = this.G = { P: { h: mk(this.facPick.h), g: mk(this.facPick.g) }, turn: Math.random() < 0.5 ? 'h' : 'g', winner: null, n: 0 };
+      const G = this.G = { P: { h: mk(this.facPick.h), g: mk(this.facPick.g) }, turn: Math.random() < 0.5 ? 'h' : 'g', winner: null, n: 0, runes: RNG(Math.random() * 1e9).shuffle(Object.keys(RUNES)).slice(0, NL) };
       this.ev = [];
       for (let i = 0; i < 4; i++) { this.draw('h', true); this.draw('g', true); }
       this.draw(G.turn === 'h' ? 'g' : 'h', true);
@@ -128,6 +240,7 @@
       G.turn = side; G.n++;
       p.turns++; p.max = Math.min(8, p.turns); p.mana = p.max; p.powerUsed = false;
       this.evT = 0;
+      (G.runes || []).forEach((r, l) => { const u = p.board[l]; if (!u) return; if (r === 'spring') { p.mana++; this.e({ t: 'rune', side, lane: l, r }); } if (r === 'star') { u.hp++; u.max++; this.e({ t: 'buff', side, lane: l }); } });
       this.draw(side);
       this.e({ t: 'turn', side });
     }
@@ -142,12 +255,30 @@
       }
       const u = p.board[lane]; if (!u) return;
       if (u.shield) { u.shield = false; this.e({ t: 'shield', side, lane }); return; }
+      if (n <= 0) return;
       u.hp -= n;
       this.e({ t: 'dmg', side, lane, n });
-      if (src && has(src.u, 'vamp')) this.heal(src.side, n);
-      if (src && has(u, 'thorns') && src.lane != null) { this.evT += 0.15; this.dmg(src.side, src.lane, 2); }
-      if (u.hp <= 0) { p.board[lane] = null; this.e({ t: 'die', side, lane, cid: u.cid }); }
+      if (src && src.u && has(src.u, 'vamp')) this.heal(src.side, n);
+      if (src && src.u && has(src.u, 'poison') && u.hp > 0) { u.hp = 0; this.e({ t: 'poison', side, lane }); }
+      if (src && src.u && has(src.u, 'curse') && u.hp > 0 && u.atk > 0) { u.atk--; this.e({ t: 'debuff', side, lane }); }
+      if (src && src.u && has(src.u, 'frostbite') && u.hp > 0) { u.sleep = Math.max(u.sleep, 1); this.e({ t: 'sleep', side, lane }); }
+      if (src && has(u, 'thorns') && src.lane != null && src.lane >= 0) { this.evT += 0.15; this.dmg(src.side, src.lane, 2); }
+      if (u.hp <= 0) this.kill(side, lane);
     }
+    kill(side, lane) {
+      const p = this.G.P[side], u = p.board[lane]; if (!u) return;
+      if (has(u, 'undying') && !u.revived) { u.revived = true; u.hp = 1; this.e({ t: 'revive', side, lane }); return; }
+      p.board[lane] = null; this.e({ t: 'die', side, lane, cid: u.cid });
+      if (this.G.runes && this.G.runes[lane] === 'grave' && u.cid !== 'zombie') { this.evT += 0.25; this.summon(side, lane, 'zombie'); }
+    }
+    summon(side, lane, cid) {
+      const p = this.G.P[side]; if (p.board[lane]) return false;
+      p.board[lane] = this.mkUnit(cid); this.e({ t: 'play', side, lane, cid });
+      if (this.G.runes && this.G.runes[lane] === 'bastion') p.board[lane].shield = true;
+      return true;
+    }
+    emptyLanes(side) { return this.G.P[side].board.map((u, l) => (u ? -1 : l)).filter((l) => l >= 0); }
+    freeze(side, lane) { const u = this.G.P[side].board[lane]; if (u) { u.sleep = Math.max(u.sleep, 1); this.e({ t: 'sleep', side, lane }); } }
     mkUnit(cid, uid) { const C = CARDS[cid]; return { uid: uid || this.uid++, cid, atk: C.a, hp: C.h, max: C.h, shield: (C.kw || []).includes('shield'), fresh: true, sleep: 0 }; }
     heal(side, n) { const p = this.G.P[side]; p.hp = Math.min(30, p.hp + n); this.e({ t: 'heal', side, n }); }
     check() {
@@ -171,7 +302,14 @@
           this.e({ t: 'play', side, lane: m.lane, cid });
           if (C.bc === 'rally') p.board.forEach((x, l) => { if (x && l !== m.lane) { x.atk += 1; this.e({ t: 'buff', side, lane: l }); } });
           if (C.bc === 'heal3') { this.evT += 0.3; this.heal(side, 3); }
+          if (G.runes && G.runes[m.lane] === 'bastion') { u.shield = true; this.e({ t: 'rune', side, lane: m.lane, r: 'bastion' }); }
           if (C.bc === 'hex' && o.board[m.lane]) { this.evT += 0.35; this.e({ t: 'bolt', from: [side, m.lane], to: [os, m.lane], color: '#c58bff' }); this.evT += 0.3; this.dmg(os, m.lane, 2); }
+          if (C.bc === 'drain2') { this.evT += 0.35; this.e({ t: 'bolt', from: [side, m.lane], to: [os, -1], color: '#ff4a5e' }); this.evT += 0.3; this.dmg(os, -1, 2); this.heal(side, 2); }
+          if (C.bc === 'raise') { const e = this.emptyLanes(side); if (e.length) { this.evT += 0.3; this.summon(side, e[0], 'zombie'); } }
+          if (C.bc === 'raiseAll') this.emptyLanes(side).forEach((l) => { this.evT += 0.15; this.summon(side, l, 'zombie'); });
+          if (C.bc === 'whelps') this.emptyLanes(side).forEach((l) => { this.evT += 0.15; this.summon(side, l, 'whelp'); });
+          if (C.bc === 'zapAll') { this.evT += 0.3; o.board.forEach((x, l) => { if (x) this.dmg(os, l, 1); }); }
+          if (C.bc === 'freezeLane' && o.board[m.lane]) { this.evT += 0.3; this.freeze(os, m.lane); }
         } else {
           const tg = C.tg, T = m.target;
           const okUnit = (s, l) => T && T.side === s && T.lane >= 0 && G.P[s].board[T.lane];
@@ -187,13 +325,33 @@
             case 'bless': { const u = p.board[T.lane]; u.atk += 2; u.hp += 2; u.max += 2; this.e({ t: 'buff', side, lane: T.lane }); break; }
             case 'sleep': { o.board[T.lane].sleep = 1; this.e({ t: 'sleep', side: os, lane: T.lane }); break; }
             case 'moonlight': this.heal(side, 6); break;
-            case 'eclipse': { const u = o.board[T.lane]; o.board[T.lane] = null; this.e({ t: 'die', side: os, lane: T.lane, cid: u.cid }); break; }
+            case 'eclipse': this.kill(os, T.lane); if (o.board[T.lane]) this.kill(os, T.lane); break;
             case 'starfall': o.board.forEach((u, l) => { if (u) this.dmg(os, l, 2); }); break;
             case 'mirror': this.draw(side); this.draw(side); break;
             case 'roots': { const u = o.board[T.lane]; u.sleep = 1; this.e({ t: 'sleep', side: os, lane: T.lane }); this.dmg(os, T.lane, 1); break; }
             case 'bloom': p.board.forEach((u, l) => { if (u) { u.atk++; u.hp++; u.max++; this.e({ t: 'buff', side, lane: l }); } }); break;
             case 'rain': this.heal(side, 3); this.draw(side); break;
-            case 'wild': p.board.forEach((u, l) => { if (!u) { p.board[l] = this.mkUnit('sprout'); this.e({ t: 'play', side, lane: l, cid: 'sprout' }); } }); break;
+            case 'wild': this.emptyLanes(side).forEach((l) => this.summon(side, l, 'sprout')); break;
+            case 'darkpact': this.draw(side); this.draw(side); p.hp -= 2; this.e({ t: 'dmg', side, lane: -1, n: 2 }); break;
+            case 'hexspell': { const u = o.board[T.lane]; u.atk = Math.max(0, u.atk - 3); this.e({ t: 'debuff', side: os, lane: T.lane }); break; }
+            case 'voidspell': this.kill(os, T.lane); p.hp -= 3; this.e({ t: 'dmg', side, lane: -1, n: 3 }); break;
+            case 'gravechill': this.freeze(os, T.lane); this.dmg(os, T.lane, 2); break;
+            case 'plague': o.board.forEach((u, l) => { if (u) this.dmg(os, l, 1); }); this.dmg(os, -1, 2); break;
+            case 'necro': this.emptyLanes(side).forEach((l) => this.summon(side, l, 'zombie')); break;
+            case 'bite': this.dmg(os, T.lane, 2); this.heal(side, 2); break;
+            case 'feast': p.board.forEach((u, l) => { if (u) { u.atk++; u.hp++; u.max++; this.e({ t: 'buff', side, lane: l }); } }); this.heal(side, 2); break;
+            case 'coffin': { const u = p.board[T.lane]; u.hp += 3; u.max += 3; u.shield = true; this.e({ t: 'buff', side, lane: T.lane }); break; }
+            case 'blizzard': o.board.forEach((u, l) => { if (u) { this.freeze(os, l); this.dmg(os, l, 1); } }); break;
+            case 'icelance': if (T.lane >= 0) this.freeze(os, T.lane); this.dmg(os, T.lane, 2); break;
+            case 'shatter': { const u = o.board[T.lane]; if (u.sleep > 0) { this.e({ t: 'poison', side: os, lane: T.lane }); this.kill(os, T.lane); if (o.board[T.lane]) this.kill(os, T.lane); } else this.dmg(os, T.lane, 2); break; }
+            case 'chain': case 'tidal': o.board.forEach((u, l) => { if (u) this.dmg(os, l, 2); }); break;
+            case 'gust': this.freeze(os, T.lane); this.dmg(os, T.lane, 1); break;
+            case 'overload': case 'hoard': p.mana++; this.draw(side); break;
+            case 'thunder': this.dmg(os, T.lane, 5); break;
+            case 'whirl': this.kill(os, T.lane); if (o.board[T.lane]) this.kill(os, T.lane); break;
+            case 'pearl': this.heal(side, 2); this.draw(side); break;
+            case 'breath': this.dmg(os, T.lane, 4); break;
+            case 'roar': p.board.forEach((u, l) => { if (u) { u.atk++; u.hp++; u.max++; this.e({ t: 'buff', side, lane: l }); } }); break;
           }
         }
         this.check();
@@ -203,17 +361,26 @@
         if (p.powerUsed || p.mana < POWER_COST) return;
         if (pw.tg === 'enemyAny' && !(T && T.side === os && (T.lane === -1 || o.board[T.lane]))) return;
         if (pw.tg === 'lane' && !(T && T.side === side && T.lane >= 0 && !p.board[T.lane])) return;
+        if (pw.tg === 'enemyUnit' && !(T && T.side === os && T.lane >= 0 && o.board[T.lane])) return;
+        if (pw.tg === 'allyUnit' && !(T && T.side === side && T.lane >= 0 && p.board[T.lane])) return;
         p.powerUsed = true; p.mana -= POWER_COST;
         this.e({ t: 'power', side, fac: p.fac });
         this.evT += 0.35;
         if (p.fac === 'sun') this.dmg(os, T.lane, 1);
         if (p.fac === 'moon') this.heal(side, 3);
-        if (p.fac === 'forest') { p.board[T.lane] = this.mkUnit('sprout'); this.e({ t: 'play', side, lane: T.lane, cid: 'sprout' }); }
+        if (p.fac === 'forest') this.summon(side, T.lane, 'sprout');
+        if (p.fac === 'undead') this.summon(side, T.lane, 'zombie');
+        if (p.fac === 'dark') { const u = o.board[T.lane]; u.atk = Math.max(0, u.atk - 2); this.e({ t: 'debuff', side: os, lane: T.lane }); }
+        if (p.fac === 'vampire') { this.dmg(os, T.lane, 1); this.heal(side, 1); }
+        if (p.fac === 'frost') this.freeze(os, T.lane);
+        if (p.fac === 'storm') this.dmg(os, T.lane, 2);
+        if (p.fac === 'abyss') { const u = p.board[T.lane]; u.atk++; u.hp++; u.max++; this.e({ t: 'buff', side, lane: T.lane }); }
+        if (p.fac === 'dragon') this.dmg(os, -1, 2);
         this.check();
         this.push();
       } else if (m.a === 'end') {
         // битва
-        for (let l = 0; l < 3; l++) {
+        for (let l = 0; l < NL; l++) {
           const u = p.board[l]; if (!u) continue;
           if (u.sleep > 0) { u.sleep--; this.e({ t: 'zzz', side, lane: l }); this.evT += 0.3; continue; }
           if ((u.fresh && !has(u, 'rush')) || u.atk <= 0) continue;
@@ -223,7 +390,7 @@
             const target = has(u, 'archer') || !o.board[l] ? -1 : l;
             this.e({ t: 'atk', side, lane: l, tside: os, tlane: target });
             this.evT += 0.32;
-            this.dmg(os, target, u.atk, { side, lane: l, u });
+            this.dmg(os, target, u.atk + (G.runes && G.runes[l] === 'fire' ? 1 : 0), { side, lane: l, u });
             this.evT += 0.25;
             if (this.check()) break;
           }
@@ -282,6 +449,10 @@
         case 'die': { const p = pos(f.side, f.lane); SFX.play('fail'); this.parts.emit(p.x, p.y, { n: 40, speed: 260, life: 1.1, size: 10, color: ['#ffffff', FAC[this.facOf(f.side)].glow, '#888'] }); break; }
         case 'buff': { const p = pos(f.side, f.lane); SFX.play('grow'); this.floats.push({ x: p.x, y: p.y - 30, text: '▲', t: 0, color: '#ffe7a6' }); break; }
         case 'sleep': case 'zzz': { const p = pos(f.side, f.lane); this.floats.push({ x: p.x, y: p.y - 30, text: 'zZz', t: 0, color: '#c9b8ff' }); break; }
+        case 'revive': { const p = pos(f.side, f.lane); SFX.play('magic'); this.floats.push({ x: p.x, y: p.y - 30, text: 'встаёт!', t: 0, color: '#b8ff7a' }); this.parts.emit(p.x, p.y, { n: 30, speed: 180, life: 1, size: 9, color: ['#9cff5c', '#2a3a1a'] }); break; }
+        case 'poison': { const p = pos(f.side, f.lane); this.floats.push({ x: p.x, y: p.y - 30, text: '☠ яд', t: 0, color: '#a8ff6a' }); break; }
+        case 'debuff': { const p = pos(f.side, f.lane); SFX.play('hit'); this.floats.push({ x: p.x, y: p.y - 30, text: '▼', t: 0, color: '#d09cff' }); break; }
+        case 'rune': { const p = pos(f.side, f.lane); this.floats.push({ x: p.x, y: p.y - 40, text: RUNES[f.r].icon + ' ' + RUNES[f.r].n, t: 0, color: '#ffe7a6' }); break; }
         case 'burn': if (f.side === this.me) this.ctx.toast('Рука полна — карта сгорела 🔥'); break;
         case 'fatigue': if (f.side === this.me) this.ctx.toast('Колода пуста — замок слабеет 🍂'); break;
         case 'power': { const p = this.slotPos(f.side, -1); SFX.play('magic'); this.parts.emit(p.x, p.y - 60, { n: 36, speed: 220, life: 1, size: 11, color: [FAC[f.fac].glow, '#fff'] }); this.floats.push({ x: 860, y: 420, text: POWERS[f.fac].icon + ' ' + POWERS[f.fac].n, t: 0, color: '#fff', big: true }); break; }
@@ -310,7 +481,7 @@
     hitCard(p) { const L = this.handLayout(); for (let i = L.length - 1; i >= 0; i--) { const r = L[i]; if (Math.abs(p.x - r.x) < r.w / 2 && Math.abs(p.y - r.y) < r.h / 2) return r.c; } return null; }
     hitTarget(p) {
       for (const side of [this.me, this.op]) {
-        for (let l = 0; l < 3; l++) { const s = this.slotPos(side, l); if (Math.abs(p.x - s.x) < SLOT.w / 2 && Math.abs(p.y - s.y) < SLOT.h / 2) return { side, lane: l }; }
+        for (let l = 0; l < NL; l++) { const s = this.slotPos(side, l); if (Math.abs(p.x - s.x) < SLOT.w / 2 && Math.abs(p.y - s.y) < SLOT.h / 2) return { side, lane: l }; }
         const c = this.slotPos(side, -1); if (dist(p.x, p.y, c.x, c.y) < 110) return { side, lane: -1 };
       }
       return null;
@@ -321,6 +492,8 @@
         const tg = POWERS[me.fac].tg;
         if (tg === 'enemyAny') { T.push({ side: this.op, lane: -1 }); op.board.forEach((u, l) => u && T.push({ side: this.op, lane: l })); }
         if (tg === 'lane') me.board.forEach((u, l) => !u && T.push({ side: this.me, lane: l }));
+        if (tg === 'enemyUnit') op.board.forEach((u, l) => u && T.push({ side: this.op, lane: l }));
+        if (tg === 'allyUnit') me.board.forEach((u, l) => u && T.push({ side: this.me, lane: l }));
         return T;
       }
       const C = CARDS[cid];
@@ -393,26 +566,24 @@
       this.showFacUI();
     }
     showFacUI() {
-      const p = h(`<div id="cdFac" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,26,.55)">
-        <div class="panel" style="max-width:820px;text-align:center">
-          <h2 style="margin:0;font-family:var(--script);font-weight:400;font-size:48px">Выбери королевство</h2>
-          <div class="roles" style="margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-            <div class="role" id="fsun" style="cursor:pointer"><div class="ico">☀️</div><h3>Солнце</h3><p>Напор и огонь: рывки, двойные удары, огненные шары. Бей быстро!</p></div>
-            <div class="role" id="fmoon" style="cursor:pointer"><div class="ico">🌙</div><h3>Луна</h3><p>Хитрость и терпение: шипы, сон, вампиризм, затмения. Выживи и победи.</p></div>
-            <div class="role" id="fforest" style="cursor:pointer"><div class="ico">🌳</div><h3>Лес</h3><p>Рост и стойкость: ростки становятся великанами, дриады лечат, корни держат врага.</p></div>
+      const p = h(`<div id="cdFac" class="scroll-y" style="position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;background:rgba(5,6,26,.6);overflow-y:auto;padding:56px 12px 20px">
+        <div class="panel" style="max-width:980px;width:100%;text-align:center;margin:auto">
+          <h2 style="margin:0;font-family:var(--script);font-weight:400;font-size:44px">Выбери королевство</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:12px">
+            ${Object.keys(FAC).map((k) => `<div class="role" id="f${k}" style="cursor:pointer;padding:10px 8px"><div class="ico" style="font-size:30px">${FAC[k].em}</div><h3 style="margin:4px 0;font-size:16px">${FAC[k].name}</h3><p style="font-size:11.5px;margin:0 0 4px">${FAC_DESC[k]}</p><p style="font-size:11px;margin:0;color:#ffe7a6">${POWERS[k].icon} ${POWERS[k].n}: ${POWERS[k].d}</p></div>`).join('')}
           </div>
-          <div style="font-size:12.5px;color:var(--muted);margin-top:10px">Сила героя (2 💧, раз в ход): ☀️ Искра — 1 урон · 🌙 Бальзам — замку +3 · 🌳 Семечко — Росток</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:10px">Сила героя стоит 2 💧 и работает раз в ход · у каждой из 4 линий своя руна</div>
           <div class="readyline" id="facLine"></div>
         </div></div>`);
       this.el.appendChild(p);
       const choose = (fac) => { SFX.play('click'); this.facPick[this.me] = fac; this.ctx.send({ a: 'fac', side: this.me, fac }); this.updateFacUI(); if (this.ctx.isHost) this.maybeStart(); };
-      $('#fsun', p).onclick = () => choose('sun'); $('#fmoon', p).onclick = () => choose('moon'); $('#fforest', p).onclick = () => choose('forest');
+      for (const k of Object.keys(FAC)) $('#f' + k, p).onclick = () => choose(k);
       this.updateFacUI();
     }
     updateFacUI() {
       const line = $('#facLine', this.el); if (!line) return;
       const m = this.facPick[this.me], o = this.facPick[this.op];
-      for (const k of ['sun', 'moon', 'forest']) $('#f' + k, this.el).classList.toggle('mine', m === k);
+      for (const k of Object.keys(FAC)) $('#f' + k, this.el).classList.toggle('mine', m === k);
       line.innerHTML = `<span>Ты: ${m ? `<b>${FAC[m].name}</b>` : 'выбираешь…'}</span><span>${esc(this.ctx.peer.name)}: ${o ? '<b>готов(а) ✓</b>' : 'выбирает…'}</span>`;
     }
     showEnd() {
@@ -466,14 +637,22 @@
       // река посередине
       const ry = (EN_Y + MY_Y) / 2;
       const rv = g.createLinearGradient(0, ry - 26, 0, ry + 26); rv.addColorStop(0, 'rgba(90,160,255,0)'); rv.addColorStop(0.5, 'rgba(120,190,255,0.22)'); rv.addColorStop(1, 'rgba(90,160,255,0)');
-      g.fillStyle = rv; g.fillRect(420, ry - 26, 820, 52);
+      g.fillStyle = rv; g.fillRect(470, ry - 26, 790, 52);
       g.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 14; i++) { const x = 430 + ((t * 40 + i * 61) % 800); Glow.draw(g, x, ry + Math.sin(t * 2 + i) * 10, 8, '#9fdcff', 0.5); }
+      for (let i = 0; i < 14; i++) { const x = 480 + ((t * 40 + i * 61) % 770); Glow.draw(g, x, ry + Math.sin(t * 2 + i) * 10, 8, '#9fdcff', 0.5); }
       g.globalCompositeOperation = 'source-over';
 
       const G = this.view;
       if (!G) { this.parts.draw(g); return; }
       const me = G.P[this.me], op = G.P[this.op];
+      // руны линий
+      (G.runes || []).forEach((r, l) => {
+        const R0 = RUNES[r], x = LANES[l];
+        g.fillStyle = 'rgba(10,8,30,0.7)'; roundRect(g, x - 62, ry - 17, 124, 34, 17); g.fill();
+        g.strokeStyle = 'rgba(255,220,150,0.45)'; g.lineWidth = 1.5; roundRect(g, x - 62, ry - 17, 124, 34, 17); g.stroke();
+        g.font = '18px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText(R0.icon, x - 52, ry + 1);
+        g.font = '700 13px Comfortaa'; g.fillStyle = '#ffe7a6'; g.fillText(R0.n, x - 26, ry + 1); g.textBaseline = 'alphabetic';
+      });
       // замки
       this.drawCastle(g, CASTLE.en.x, CASTLE.en.y, op, false, t, this.shakes[`${this.op}-1`]);
       this.drawCastle(g, CASTLE.me.x, CASTLE.me.y, me, true, t, this.shakes[`${this.me}-1`]);
@@ -483,7 +662,7 @@
       const isTarget = (s, l) => targets.some((v) => v.side === s && v.lane === l);
       for (const side of [this.op, this.me]) {
         const P = G.P[side];
-        for (let l = 0; l < 3; l++) {
+        for (let l = 0; l < NL; l++) {
           const p = this.slotPos(side, l);
           const tg = isTarget(side, l);
           g.save();
@@ -537,7 +716,7 @@
         g.fillText('нажми на карту ещё раз, чтобы применить', 860, 650);
       } else if (selCard && this.myTurn()) {
         g.font = '600 18px Comfortaa'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,240,200,0.8)';
-        g.fillText(CARDS[selCard.cid].t === 'u' ? 'выбери свободную линию' : 'выбери цель', 860, 650);
+        g.fillText(CARDS[selCard.cid].t === 'u' ? 'выбери свободную линию · руны: ' + (G.runes || []).map((r) => RUNES[r].icon + ' ' + RUNES[r].d).join('  ·  ') : 'выбери цель', 860, 650);
       }
       // крупный просмотр карты: выбранная, под курсором или нажатый юнит
       const hovCard = !selCard && this.hover && me.hand.find((c) => c.uid === this.hover);
@@ -545,8 +724,8 @@
       const pv = selCard ? { cid: selCard.cid, fac: me.fac } : hovCard ? { cid: hovCard.cid, fac: me.fac } : insp;
       if (pv) {
         g.save(); g.globalAlpha = insp ? Math.min(1, (3.5 - (this.t - insp.t)) * 2) : 1;
-        g.fillStyle = 'rgba(5,4,20,0.45)'; roundRect(g, 337, 268, 236, 316, 22); g.fill();
-        this.drawCard(g, pv.cid, 455, 426, 220, 300, { fac: pv.fac, t, unit: insp ? insp.unit : null });
+        g.fillStyle = 'rgba(5,4,20,0.55)'; roundRect(g, 338, 300, 184, 252, 20); g.fill();
+        this.drawCard(g, pv.cid, 430, 426, 172, 236, { fac: pv.fac, t, unit: insp ? insp.unit : null });
         g.restore();
       }
       this.parts.draw(g);
@@ -635,7 +814,7 @@
       const gr = g.createLinearGradient(0, -hh / 2, 0, hh / 2); gr.addColorStop(0, f.c1); gr.addColorStop(1, f.c2);
       g.fillStyle = gr; roundRect(g, x - w / 2, y - hh / 2, w, hh, 8); g.fill();
       g.strokeStyle = f.edge; g.lineWidth = 1.5; roundRect(g, x - w / 2 + 4, y - hh / 2 + 4, w - 8, hh - 8, 6); g.stroke();
-      drawGlyph(g, f.icon, x, y, w * 0.45, f.edge, 2);
+      g.font = `${w * 0.42}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(f.em, x, y + 2); g.textBaseline = 'alphabetic';
     }
 
     drawCard(g, cid, x, y, w, hh, o = {}) {

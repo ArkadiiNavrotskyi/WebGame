@@ -1,5 +1,5 @@
 'use strict';
-// «Бомба» — Сапёр видит бомбу с таймером, Эксперт читает инструкцию. 8 уровней, потом «Без конца».
+// «Бомба» — Сапёр видит бомбу с таймером, Эксперт читает инструкцию. 10 уровней, потом «Без конца».
 (() => {
   const W = 1600, H = 900;
   const MW = 420, MH = 300;
@@ -59,19 +59,31 @@
     heart: { name: 'Сердцебиение', hint: 'ровная линия с резким всплеском, как пульс', f: [7, 12, 3] },
   };
   const WAVE_IDS = Object.keys(WAVES);
-  const LABEL = { wires: 'ПРОВОДА', heart: 'СЕРДЦЕ', dial: 'ЗВЁЗДНЫЙ ЗАМОК', moons: 'ЛУНЫ', wave: 'ВОЛНА' };
+  const CIPHER_AB = 'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+  const CIPHER_WORDS = ['ВЕСНА', 'МЕЧТА', 'ТЕПЛО', 'ПЕСНЯ', 'ЛАСКА', 'ВОЛНА', 'СОЛНЦЕ', 'ЗВЕЗДА', 'СКАЗКА', 'ОБЛАКО', 'УЛЫБКА', 'РАДУГА', 'КОТИК', 'ПЛЕДИК', 'ЧАЙНИК', 'ФОНАРЬ'];
+  const cipherShift = (E) => E.bat + 1 + (E.case === 'gold' ? 2 : 0);
+  const encode = (w, k) => [...w].map((ch) => CIPHER_AB[(CIPHER_AB.indexOf(ch) + k) % CIPHER_AB.length]).join('');
+  // гирлянда: узоры 3×3 (1 — горит) и номер рубильника
+  const LAMP_PATS = [
+    { p: '010111010', n: 'Крест', sw: 2 }, { p: '101010101', n: 'Косой крест', sw: 0 }, { p: '101000101', n: 'Четыре угла', sw: 3 }, { p: '100100111', n: 'Уголок', sw: 1 },
+    { p: '111010010', n: 'Молоток', sw: 3 }, { p: '100010001', n: 'Диагональ', sw: 2 }, { p: '111101111', n: 'Рамка', sw: 0 }, { p: '010111101', n: 'Стрелка', sw: 1 },
+  ];
+  const LABEL = { wires: 'ПРОВОДА', heart: 'СЕРДЦЕ', dial: 'ЗВЁЗДНЫЙ ЗАМОК', moons: 'ЛУНЫ', wave: 'ВОЛНА', clock: 'ЧАСЫ', cipher: 'ШИФР', lamps: 'ГИРЛЯНДА' };
 
   const LEVELS = [
     { name: 'Учебная бомба', mods: ['wires'], time: 180, strikes: 3, wires: [3, 3] },
     { name: 'Сердечко', mods: ['wires', 'heart'], time: 180, strikes: 3, wires: [3, 4] },
     { name: 'Звёздный замок', mods: ['wires', 'heart', 'dial'], time: 240, strikes: 3, wires: [3, 5] },
-    { name: 'Лунная ночь', mods: ['moons', 'dial', 'wires'], time: 240, strikes: 3, wires: [4, 5] },
-    { name: 'На одной волне', mods: ['wave', 'moons', 'heart', 'wires'], time: 300, strikes: 3, wires: [4, 6] },
-    { name: 'Полный набор', mods: ['wave', 'moons', 'dial', 'heart', 'wires'], time: 330, strikes: 3, wires: [5, 6] },
-    { name: 'Двойные провода', mods: ['wires', 'wave', 'moons', 'dial', 'heart', 'wires'], time: 360, strikes: 2, wires: [4, 6] },
-    { name: 'Финал', mods: ['wires', 'wave', 'moons', 'dial', 'heart', 'wires'], time: 300, strikes: 2, wires: [5, 6] },
+    { name: 'Часы тикают', mods: ['clock', 'wires', 'dial'], time: 240, strikes: 3, wires: [4, 5] },
+    { name: 'Лунная ночь', mods: ['moons', 'clock', 'wires', 'heart'], time: 270, strikes: 3, wires: [4, 5] },
+    { name: 'Тайное письмо', mods: ['cipher', 'moons', 'wires', 'dial'], time: 300, strikes: 3, wires: [4, 6] },
+    { name: 'На одной волне', mods: ['wave', 'cipher', 'heart', 'wires', 'clock'], time: 330, strikes: 3, wires: [4, 6] },
+    { name: 'Гирлянда', mods: ['lamps', 'wave', 'moons', 'dial', 'wires'], time: 330, strikes: 3, wires: [5, 6] },
+    { name: 'Полный набор', mods: ['lamps', 'cipher', 'clock', 'wave', 'moons', 'heart'], time: 360, strikes: 3, wires: [5, 6] },
+    { name: 'Финал', mods: ['wires', 'lamps', 'cipher', 'clock', 'wave', 'dial'], time: 330, strikes: 2, wires: [5, 6] },
   ];
-  const levelDef = (n) => (n <= LEVELS.length ? LEVELS[n - 1] : { name: `Без конца · ${n - LEVELS.length}`, mods: ['wires', 'heart', 'dial', 'moons', 'wave', 'wires'], time: Math.max(170, 320 - (n - LEVELS.length - 1) * 15), strikes: 2, wires: [5, 6] });
+  const ALL_MODS = ['wires', 'heart', 'dial', 'moons', 'wave', 'clock', 'cipher', 'lamps'];
+  const levelDef = (n) => (n <= LEVELS.length ? LEVELS[n - 1] : { name: `Без конца · ${n - LEVELS.length}`, mods: RNG(n * 977).shuffle([...ALL_MODS]).slice(0, 6), time: Math.max(170, 320 - (n - LEVELS.length - 1) * 15), strikes: 2, wires: [5, 6] });
 
   // ---------- Генерация бомбы: одинаковая у обоих по seed ----------
   function makeBomb(seed, lvl, att) {
@@ -90,6 +102,9 @@
       if (type === 'dial') { m.gl = r.shuffle(Object.keys(DIAL_GLYPHS).slice()).slice(0, 3); m.start = r.int(0, 9); }
       if (type === 'moons') { m.ph = r.shuffle([0, 1, 2, 3, 4, 5, 6, 7]).slice(0, 4); m.led = r.int(0, 2); }
       if (type === 'wave') { m.shape = r.pick(WAVE_IDS); m.cyc = r.int(2, 4); m.start = r.int(0, 14); }
+      if (type === 'clock') { m.h = r.int(1, 12); m.m = r.int(0, 11) * 5; m.sh = r.int(1, 12); m.sm = r.int(0, 11) * 5; }
+      if (type === 'cipher') { m.word = r.pick(CIPHER_WORDS); const others = r.shuffle(CIPHER_WORDS.filter((w) => w !== m.word && w.length === m.word.length)).slice(0, 3); m.opts = r.shuffle([m.word, ...others]); m.enc = encode(m.word, cipherShift(E)); }
+      if (type === 'lamps') m.pat = r.int(0, LAMP_PATS.length - 1);
       m.sol = solve(m, E);
       return m;
     });
@@ -102,6 +117,9 @@
       case 'dial': return m.gl.reduce((s, k) => s + DIAL_GLYPHS[k][E.case === 'pink' || E.case === 'gold' ? 0 : 1], 0) % 10;
       case 'moons': { const o = [0, 1, 2, 3].sort((a, b) => MOON_TABLE[m.ph[a]][m.led] - MOON_TABLE[m.ph[b]][m.led]); return E.bat === 0 ? o.reverse() : o; }
       case 'wave': return (WAVES[m.shape].f[m.cyc - 2] + (E.case === 'mint' ? 1 : 0)) % FREQS.length;
+      case 'clock': { const tm = ((m.h % 12) * 60 + m.m + E.bat * 60 + (E.odd ? 30 : 0)) % 720; return (Math.floor(tm / 60) || 12) * 100 + (tm % 60); }
+      case 'cipher': return m.opts.indexOf(m.word);
+      case 'lamps': return (LAMP_PATS[m.pat].sw + (E.odd ? 1 : 0)) % 4;
     }
   }
 
@@ -164,12 +182,12 @@
     ],
     rules: [
       'Сапёр видит бомбу: серийный номер, батарейки, цвет корпуса и модули. Эксперт видит только инструкцию.',
-      'Модули: провода, сердце, звёздный замок, луны и волна. Каждый обезвреживается по правилам из инструкции.',
+      'Модули: провода, сердце, звёздный замок, луны, волна, часы, шифр и гирлянда. Каждый обезвреживается по правилам из инструкции.',
       'Ошибка — красный крестик, и таймер начинает спешить. Много ошибок или ноль на таймере — бах 💥',
-      '8 уровней, каждый сложнее. Если взорвалось — новая бомба того же уровня. После финала — режим «Без конца».',
+      '10 уровней, каждый сложнее. Если взорвалось — новая бомба того же уровня. После финала — режим «Без конца».',
       'Говорите в Discord: Сапёр описывает, Эксперт ищет правило.',
     ],
-    info() { const m = Store.get('bomb_max', 1); return m > LEVELS.length ? 'все 8 пройдены ✦' : `уровень ${m} из ${LEVELS.length}`; },
+    info() { const m = Store.get('bomb_max', 1); return m > LEVELS.length ? `все ${LEVELS.length} пройдены ✦` : `уровень ${m} из ${LEVELS.length}`; },
     create(ctx) { document.body.classList.toggle('landscape', ctx.role === 'defuser'); return new Bomb(ctx); },
   };
 
@@ -383,7 +401,7 @@
       const mn = (k) => pic(50, 50, (g) => drawMoon(g, 25, 25, 21, k));
       const wv = (s, c) => pic(130, 46, (g) => { g.fillStyle = '#0f2a22'; roundRect(g, 0, 0, 130, 46, 8); g.fill(); drawWave(g, 6, 2, 118, 42, s, c, 0, '#7dffb5', 2.2); });
       const wireRows = (n) => WIRE_RULES[n].map(([t]) => `<li>${t}</li>`).join('');
-      const tabs = [['base', '📘', 'Основы'], ['wires', '🔌', 'Провода'], ['heart', '💗', 'Сердце'], ['dial', '✴️', 'Замок'], ['moons', '🌙', 'Луны'], ['wave', '〰️', 'Волна']];
+      const tabs = [['base', '📘', 'Основы'], ['wires', '🔌', 'Провода'], ['heart', '💗', 'Сердце'], ['dial', '✴️', 'Замок'], ['moons', '🌙', 'Луны'], ['wave', '〰️', 'Волна'], ['clock', '⏰', 'Часы'], ['cipher', '🔐', 'Шифр'], ['lamps', '💡', 'Гирлянда']];
       return `<div class="bm-manual">
         <div class="bm-tabs">${tabs.map(([id, ic, n], i) => `<button class="bm-tab ${i ? '' : 'on'}" data-p="${id}"><span>${ic}</span>${n}</button>`).join('')}</div>
         <div class="bm-book scroll-y">
@@ -438,6 +456,30 @@
           ${WAVE_IDS.map((s) => `<tr><td class="l"><img src="${wv(s, 2)}" width="130" height="46" alt=""><br><b>${WAVES[s].name}</b> <span class="small">— ${WAVES[s].hint}</span></td>${WAVES[s].f.map((i) => `<td class="big">${FREQS[i]}</td>`).join('')}</tr>`).join('')}</table>
           <p class="small">Шкала: ${FREQS.join(' → ')}</p>
         </div>
+        <div class="bm-page" data-p="clock" style="display:none">
+          <h2>⏰ Часы</h2>
+          <p>Стрелочные часы и два окошка: <b>часы</b> и <b>минуты</b>. Попроси Сапёра назвать время на циферблате.</p>
+          <ol><li>Прибавь столько <b>часов</b>, сколько на бомбе <b>батареек</b>.</li>
+          <li>Если последняя цифра серийного номера <b>нечётная</b> — прибавь ещё <b>30 минут</b>.</li>
+          <li>Часы двенадцатичасовые: после 12 идёт 1.</li></ol>
+          <p>Выставьте получившееся время стрелками ▲▼ и нажмите <b>УСТАНОВИТЬ</b>.</p>
+          <p class="small">Пример: на циферблате 10:45, 3 батарейки, серийник кончается на 7 → 1:45 + 30 мин = 2:15.</p>
+        </div>
+        <div class="bm-page" data-p="cipher" style="display:none">
+          <h2>🔐 Шифр</h2>
+          <p>На экране — зашифрованное слово, под ним четыре кнопки со словами. Каждая буква сдвинута по алфавиту <b>вперёд</b>.</p>
+          <ol><li>Сдвиг = число <b>батареек + 1</b>.</li><li>Если корпус <b>золотой</b> — сдвиг ещё <b>+2</b>.</li></ol>
+          <p>Сдвинь каждую букву на столько же <b>назад</b> — получится слово. Скажи Сапёру, какую кнопку нажать.</p>
+          <div class="tip" style="font-family:'Courier New',monospace;letter-spacing:2px;word-break:break-all">${CIPHER_AB.split('').join(' ')}</div>
+          <p class="small">После Я снова идёт А. Буквы Ё в шифре нет. Пример: сдвиг 2, на экране «ДКФ» → «ВИТ».</p>
+        </div>
+        <div class="bm-page" data-p="lamps" style="display:none">
+          <h2>💡 Гирлянда</h2>
+          <p>Девять лампочек квадратом 3×3 и четыре рубильника. Попроси Сапёра описать, <b>какие лампочки горят</b>, и найди узор.</p>
+          <p>Если последняя цифра серийного номера <b>нечётная</b> — дёргай <b>следующий</b> рубильник (после 4-го — 1-й).</p>
+          <table class="pics"><tr><th>Узор</th><th>Рубильник</th><th>Узор</th><th>Рубильник</th></tr>
+          ${(() => { const lp = (s) => pic(54, 54, (g) => { g.fillStyle = '#1a1626'; roundRect(g, 1, 1, 52, 52, 8); g.fill(); [...s].forEach((c, i) => { g.fillStyle = c === '1' ? '#ffd27a' : '#3a3448'; g.beginPath(); g.arc(11 + (i % 3) * 16, 11 + Math.floor(i / 3) * 16, 6, 0, TAU); g.fill(); }); }); let s = ''; for (let i = 0; i < LAMP_PATS.length; i += 2) s += `<tr>${[LAMP_PATS[i], LAMP_PATS[i + 1]].map((L) => `<td><img src="${lp(L.p)}" width="54" height="54" alt=""><br><span class="small">${L.n}</span></td><td class="big">${L.sw + 1}</td>`).join('')}</tr>`; return s; })()}</table>
+        </div>
         </div></div>`;
     }
 
@@ -490,6 +532,20 @@
           break;
         case 'moons':
           for (let i = 0; i < 4; i++) if (Math.hypot(q.x - (75 + i * 90), q.y - 175) < 44) { pr('m' + i); this.doAct(m.slot, i); }
+          break;
+        case 'clock':
+          if (L.h == null) { L.h = m.sh; L.m = m.sm; }
+          if (inR(q, 220, 48, 80, 46)) { pr('hu'); L.h = (L.h % 12) + 1; }
+          else if (inR(q, 220, 160, 80, 46)) { pr('hd'); L.h = ((L.h + 10) % 12) + 1; }
+          else if (inR(q, 310, 48, 80, 46)) { pr('mu'); L.m = (L.m + 5) % 60; }
+          else if (inR(q, 310, 160, 80, 46)) { pr('md'); L.m = (L.m + 55) % 60; }
+          else if (inR(q, 220, 220, 170, 58)) { pr('ok'); this.doAct(m.slot, L.h * 100 + L.m); }
+          break;
+        case 'cipher':
+          for (let i = 0; i < 4; i++) if (inR(q, 25 + (i % 2) * 190, 132 + Math.floor(i / 2) * 76, 180, 64)) { pr('o' + i); this.doAct(m.slot, i); }
+          break;
+        case 'lamps':
+          for (let i = 0; i < 4; i++) if (inR(q, 232 + (i % 2) * 82, 60 + Math.floor(i / 2) * 112, 72, 100)) { pr('s' + i); L.pulled = i; this.doAct(m.slot, i); }
           break;
         case 'wave':
           if (L.f == null) L.f = m.start;
@@ -768,6 +824,53 @@
       g.font = '700 38px "Courier New", monospace'; g.textAlign = 'center'; g.fillStyle = '#9fe7ff';
       g.fillText(FREQS[f], 192, 220); g.font = '700 16px Comfortaa'; g.fillStyle = 'rgba(159,231,255,0.6)'; g.fillText('МГц', 262, 218);
       this.btn(g, 90, 244, 240, 46, 'ПЕРЕДАТЬ', s, 'ok', '#2f8a5c', 20);
+    }
+
+    m_clock(g, m, s, t) {
+      const L = this.loc[s] || {}, hh = L.h == null ? m.sh : L.h, mm = L.m == null ? m.sm : L.m;
+      const cx = 112, cy = 172, r = 92;
+      g.fillStyle = '#f4efe0'; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+      g.strokeStyle = '#3a3550'; g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.stroke();
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; g.strokeStyle = '#2a2433'; g.lineWidth = i % 3 ? 2 : 5; g.beginPath(); g.moveTo(cx + Math.sin(a) * r * 0.78, cy - Math.cos(a) * r * 0.78); g.lineTo(cx + Math.sin(a) * r * 0.92, cy - Math.cos(a) * r * 0.92); g.stroke(); }
+      g.fillStyle = '#2a2433'; g.font = '700 16px Comfortaa'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      for (const [n, a] of [[12, 0], [3, 0.25], [6, 0.5], [9, 0.75]]) g.fillText(n, cx + Math.sin(a * TAU) * r * 0.62, cy - Math.cos(a * TAU) * r * 0.62);
+      g.textBaseline = 'alphabetic';
+      const ha = (((m.h % 12) + m.m / 60) / 12) * TAU, ma = (m.m / 60) * TAU;
+      g.lineCap = 'round'; g.strokeStyle = '#1a1622'; g.lineWidth = 8; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.sin(ha) * r * 0.48, cy - Math.cos(ha) * r * 0.48); g.stroke();
+      g.strokeStyle = '#c83a4a'; g.lineWidth = 4; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.sin(ma) * r * 0.78, cy - Math.cos(ma) * r * 0.78); g.stroke();
+      g.fillStyle = '#1a1622'; g.beginPath(); g.arc(cx, cy, 7, 0, TAU); g.fill();
+      this.btn(g, 220, 48, 80, 46, '▲', s, 'hu'); this.btn(g, 310, 48, 80, 46, '▲', s, 'mu');
+      g.fillStyle = '#0b0a10'; roundRect(g, 220, 100, 170, 56, 10); g.fill();
+      g.font = '700 40px "Courier New", monospace'; g.textAlign = 'center'; g.fillStyle = '#ffd27a';
+      g.fillText(String(hh).padStart(2, ' '), 260, 142); g.fillText(':', 305, 140); g.fillText(String(mm).padStart(2, '0'), 350, 142);
+      this.btn(g, 220, 160, 80, 46, '▼', s, 'hd'); this.btn(g, 310, 160, 80, 46, '▼', s, 'md');
+      this.btn(g, 220, 220, 170, 58, 'УСТАНОВИТЬ', s, 'ok', '#2f8a5c', 18);
+    }
+    m_cipher(g, m, s, t) {
+      g.fillStyle = '#0a1018'; roundRect(g, 25, 46, MW - 50, 74, 12); g.fill();
+      g.globalCompositeOperation = 'lighter'; Glow.draw(g, MW / 2, 83, 160, '#5ab0ff', 0.18); g.globalCompositeOperation = 'source-over';
+      g.font = '700 40px "Courier New", monospace'; g.textAlign = 'center'; g.fillStyle = '#9fd8ff';
+      g.fillText([...m.enc].join(' '), MW / 2, 98);
+      m.opts.forEach((w, i) => this.btn(g, 25 + (i % 2) * 190, 132 + Math.floor(i / 2) * 76, 180, 64, w, s, 'o' + i, '#3a3a5a', w.length > 5 ? 20 : 22));
+    }
+    m_lamps(g, m, s, t) {
+      const pat = LAMP_PATS[m.pat].p;
+      g.fillStyle = '#100e18'; roundRect(g, 28, 56, 186, 200, 14); g.fill();
+      for (let i = 0; i < 9; i++) {
+        const x = 64 + (i % 3) * 57, y = 98 + Math.floor(i / 3) * 57, on = pat[i] === '1';
+        g.strokeStyle = '#3a3448'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y - 26); g.lineTo(x, y - 18); g.stroke();
+        if (on) { g.globalCompositeOperation = 'lighter'; Glow.draw(g, x, y, 54, '#ffcf6a', 0.55 + Math.sin(t * 3 + i) * 0.12); g.globalCompositeOperation = 'source-over'; }
+        g.fillStyle = on ? '#ffe39a' : '#2e2a3a'; g.beginPath(); g.ellipse(x, y, 14, 17, 0, 0, TAU); g.fill();
+      }
+      const L = this.loc[s] || {};
+      for (let i = 0; i < 4; i++) {
+        const x = 232 + (i % 2) * 82, y = 60 + Math.floor(i / 2) * 112, down = (this.press && this.press.slot === s && this.press.id === 's' + i);
+        g.fillStyle = '#1a1622'; roundRect(g, x, y, 72, 100, 10); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.5)'; g.font = '700 16px Comfortaa'; g.textAlign = 'center'; g.fillText(i + 1, x + 36, y + 22);
+        g.fillStyle = '#3a3550'; roundRect(g, x + 28, y + 32, 16, 58, 8); g.fill();
+        const ky = down ? y + 66 : y + 42;
+        g.fillStyle = '#c83a4a'; roundRect(g, x + 18, ky, 36, 20, 6); g.fill();
+      }
     }
 
     resync() { if (this.S && this.ctx.isHost) this.broadcast(); }
